@@ -15,7 +15,7 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | :------------ |:---------------:| -----|
 | `location_name`      | string| name of the location |
 | `coordinates`    | list        |   polygon coordinates for the location |
-| `text_intro` | list        |  text introduction of the location |
+| `text_intro` | string        |  text introduction of the location |
 | `image_url` | list      |    a list of image url's of the location |
 | `audio_data` | list       |  audio version of the introduction |
 
