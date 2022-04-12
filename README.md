@@ -2,7 +2,7 @@
 Spring 2022 6.08 final project 
 
                     
-###Database Structure
+### Database Structure
                     
 
 | Variable Name  | Data Type | Description|
