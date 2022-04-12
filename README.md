@@ -9,7 +9,7 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 - ```wifi_locator.ino```, the helper file containing functionalities that returns the ESP32's location based on Wifi APs around it and Google's geolocation API
                     
 ## Database Structure
-                    
+
 
 | Variable Name  | Data Type | Description|
 | :------------ |:---------------:| -----|
@@ -18,3 +18,11 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `text_intro` | list        |  text introduction of the location |
 | `image_url` | list      |    a list of image url's of the location |
 | `audio_data` | list       |  audio version of the introduction |
+
+# user_image.db
+
+| Variable Name  | Data Type | Description|
+| :------------ |:---------------:| -----|
+| `location_name`      | string| name of the location |
+| `user`    | int       |   id of the user who uploaded the image |
+| `image_url` | string        |  the url of the uploaded image |
