@@ -19,7 +19,7 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `image_url` | list      |    a list of image url's of the location |
 | `audio_data` | list       |  audio version of the introduction |
 
-# user_image.db
+### user_image.db
 
 | Variable Name  | Data Type | Description|
 | :------------ |:---------------:| -----|
