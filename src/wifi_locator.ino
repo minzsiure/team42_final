@@ -61,6 +61,7 @@ void get_location(double* lat, double* lon)
     }
     else
     {
+        Serial.printf("Begin collecting AP info\n");
         int max_aps = max(min(MAX_APS, n), 1);
         for (int i = 0; i < max_aps; ++i)
         {                                                                                                                             // for each valid access point
@@ -71,13 +72,15 @@ void get_location(double* lat, double* lon)
                 offset += sprintf(json_body + offset, ","); // add comma between entries except trailing.
             }
         }
+        Serial.printf("Finish collecting AP info\n");
 
         sprintf(json_body + offset, "%s", SUFFIX);
-        Serial.println(json_body);
+        // Serial.println(json_body);
         int len = strlen(json_body);
         // Make a HTTP request:
+        Serial.printf("Begin making HTTPS request\n");
 
-        Serial.println("SENDING REQUEST");
+        // Serial.println("SENDING REQUEST");
         request[0] = '\0'; // set 0th byte to null
         offset = 0;        // reset offset variable for sprintf-ing
         offset += sprintf(request + offset, "POST https://www.googleapis.com/geolocation/v1/geolocate?key=%s  HTTP/1.1\r\n", API_KEY);
@@ -87,18 +90,31 @@ void get_location(double* lat, double* lon)
         offset += sprintf(request + offset, "Content-Length: %d\r\n\r\n", len);
         offset += sprintf(request + offset, "%s\r\n", json_body);
 
+        Serial.printf("Begin sending request\n");
+
         do_https_request(GOOGLE_SERVER, request, response, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, false);
 
-        Serial.println("-----------");
-        Serial.println(response);
-        Serial.println("-----------");
+        Serial.printf("Finish sending request\n");
+
+        // Serial.println("-----------");
+        // Serial.println(response);
+        // Serial.println("-----------");
 
         char *starting = strchr(response, '{');
         char *ending = strrchr(response, '}');
+        if(!ending || !starting){
+            Serial.printf("Encountered Null result! check response: %s\n Not changing location", response);
+            return;
+        }
         *(ending + 1) = '\0';
-        Serial.printf("%s\n", starting);
+        // Serial.printf("%s\n", starting);
+
+        Serial.printf("Begin deserializing JSON\n");
+
         DynamicJsonDocument doc(1024);
         deserializeJson(doc, starting);
+
+        Serial.printf("Finish deserializing JSON\n");
 
         *lat = doc["location"]["lat"];
         *lon = doc["location"]["lng"];
