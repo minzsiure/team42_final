@@ -91,24 +91,20 @@ def request_handler(request):
    return get_area((lat, lon), tour)
 
 
-here_x, here_y = 42.361925, -71.089554
-
-print(get_area((here_x, here_y), tour))
-
-import matplotlib.pyplot as plt
-x = []
-y = []
-i = 0
-fig, ax = plt.subplots()
-for k, v in tour.items():
-   x = [i[0] for i in v]
-   y = [i[1] for i in v]
-   i += 1
-   ax.scatter(x, y, label = k)  
-   
-ax.scatter([here_x], [here_y], label='me')
-   
-plt.legend(loc = 'upper right')
-plt.show()
+# here_x, here_y = 42.361925, -71.089554
+# print(get_area((here_x, here_y), tour))
+# import matplotlib.pyplot as plt
+# x = []
+# y = []
+# i = 0
+# fig, ax = plt.subplots()
+# for k, v in tour.items():
+#    x = [i[0] for i in v]
+#    y = [i[1] for i in v]
+#    i += 1
+#    ax.scatter(x, y, label = k)  
+# ax.scatter([here_x], [here_y], label='me')
+# plt.legend(loc = 'upper right')
+# plt.show()
 
 
