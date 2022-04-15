@@ -31,5 +31,6 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | Variable Name  | Data Type | Description|
 | :------------ |:---------------:| -----|
 | `route_name` | string| name of the route |
+| `route_id` | int| id of the route |
 | `route_building_name`    | list       |   buildings in the route listed in order |
 | `route_building_id` | list        |  ids of the buildings in the route listed in order |
