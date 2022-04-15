@@ -10,7 +10,7 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
                     
 ## Database Structure
 
-
+### building_data.db
 | Variable Name  | Data Type | Description|
 | :------------ |:---------------:| -----|
 | `building_name`      | string| name of the building |
@@ -26,3 +26,10 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `building_name`      | string| name of the building |
 | `user`    | int       |   id of the user who uploaded the image |
 | `image_url` | string        |  the url of the uploaded image |
+
+### route_data.db
+| Variable Name  | Data Type | Description|
+| :------------ |:---------------:| -----|
+| `route_name` | string| name of the route |
+| `route_building_name`    | list       |   buildings in the route listed in order |
+| `route_building_id` | list        |  ids of the buildings in the route listed in order |
