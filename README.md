@@ -35,3 +35,10 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `route_building_name`    | list       |   buildings in the route listed in order |
 | `route_building_id` | list        |  ids of the buildings in the route listed in order |
 | `route_center_coordinates` | list        |  center coordinates of the buildings in the route listed in order |
+
+## API Request Handlers
+| HTTP Verb  | Endpoint | Description|
+| :------------ |:---------------:| -----|
+| `GET` | /get_route_list.py| This endpoint returns number of routes avaliable and the name of each route as a JSON object with parameters `num_routes` and `name_routes`. |
+| `GET` | /get_route_info.py?route_id={id}| This endpoint takes in a route id and return 1. a list of buildings in the selected route and 2. a list of center coordinates of the buildings in the corresponding route order as a JSON object with parameters 'building_names' and 'route_center_coordinates' |
+
