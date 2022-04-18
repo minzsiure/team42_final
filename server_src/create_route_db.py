@@ -38,4 +38,4 @@ def request_handler(request):
                          for i in range(len(routes))]
             all_building_names = [eval(routes[i][2])
                                   for i in range(len(routes))]
-            return all_names, all_building_names
+            return routes
