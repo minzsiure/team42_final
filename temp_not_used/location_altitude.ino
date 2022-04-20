@@ -77,6 +77,7 @@ const uint16_t JSON_BODY_SIZE = 3000;
 char request[IN_BUFFER_SIZE];
 char response[OUT_BUFFER_SIZE]; //char array buffer to hold HTTP request
 char json_body[JSON_BODY_SIZE];
+char location[100];
 
 /* CONSTANTS */
 //Prefix to POST request:
@@ -87,9 +88,17 @@ const char API_KEY[] = "AIzaSyAQ9SzqkHhV-Gjv-71LohsypXUH447GWX8"; //don't change
 uint8_t LCD_CONTROL = 21;
 uint8_t LCD_PWM = 0;
 
+double latitude = 0.0;
+double longitude = 0.0;
+
 const uint8_t BUTTON1 = 45;
 const uint8_t BUTTON2 = 34;
 const int MAX_APS = 5;
+
+float values1[50];
+int index1 = 0;
+float values2[50];
+int index2 = 0;
 
 /* Global variables*/
 uint8_t button1_state; //used for containing button state and detecting edges
@@ -104,36 +113,23 @@ WiFiClient client2; //global WiFiClient Secure object
 
 //choose one:
 
-// const char NETWORK[] = "MIT";
-// const char PASSWORD[] = "";
+const char NETWORK[] = "MIT";
+const char PASSWORD[] = "";
 const char USER[] = "Pearl Li";
-const char NETWORK[] = "TackyManchego";
-const char PASSWORD[] = "BannedRomeo6678";
+// const char NETWORK[] = "TackyManchego";
+// const char PASSWORD[] = "BannedRomeo6678";
 
+bool show_altitude = true;
 int pressure;
 int calibrated = 0;
+float offset = 15.0; //floor 1 of Hayden
 
 char request_buffer[IN_BUFFER_SIZE]; //char array buffer to hold HTTP request
 char response_buffer[OUT_BUFFER_SIZE]; //char array buffer to hold HTTP 
 
 uint8_t channel = 1; //network channel on 2.4 GHz
 
-int wifi_object_builder(char* object_string, uint32_t os_len, uint8_t channel, int signal_strength, uint8_t* mac_address) {
-    char body[100]; //for body
-    sprintf(body,"{\"macAddress\": \"%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\",\"signalStrength\": %d,\"age\": %d,\"channel\": %d}",
-                    *(mac_address), *(mac_address + 1), *(mac_address + 2), *(mac_address + 3), *(mac_address + 4), *(mac_address + 5), 
-                    signal_strength, 0, channel);//
-    strcat(body,"\0");
-    if(strlen(body) < os_len) {
-      strcpy(object_string, body);
-      return strlen(body);
-    } else {
-      return 0;
-    }
-}
-
 char*  SERVER = "googleapis.com";  // Server URL
-
 uint32_t timer;
 
 void setup() {
@@ -163,7 +159,6 @@ void setup() {
 
   //PRINT OUT WIFI NETWORKS NEARBY
   int n = WiFi.scanNetworks();
-  Serial.println("scan done");
   if (n == 0) {
     Serial.println("no networks found");
   } else {
@@ -212,17 +207,19 @@ void setup() {
 
 //main body of code
 void loop() {
-  // if(calibrated == 1) {
-  //   Serial.print(F("Approx altitude = "));
-  //   float alt = bmp.readAltitude(pressure); /* Adjusted to local forecast! */
-  //   Serial.print(alt); /* Adjusted to local forecast! */
-  //   Serial.println(" m");
-
-  //   tft.setCursor(0, 0);
-  //   tft.fillScreen(TFT_BLACK); //fill background
-  //   tft.print(alt);
-  //   delay(2000);
-  // } 
+  if(calibrated == 1 && show_altitude) {
+    float temp = bmp.readTemperature();
+    float alt = bmp.readAltitude(pressure) + offset;
+    float avg_alt = averaging_filter(alt, values1, 10, &index1);
+    Serial.printf("Approx altitude = %f, temp = %f\n", alt, temp);
+    
+    tft.setCursor(0, 0);
+    tft.fillScreen(TFT_BLACK); //fill background
+    tft.printf("lat: %f\nlon: %f\n", latitude, longitude);
+    tft.printf("%s\n", location);
+    tft.printf("avg_alt: %f\ntemp: %fC\n", avg_alt, temp);
+    delay(2000);
+  } 
   button1_state = digitalRead(BUTTON1);
   if (!button1_state && button1_state != old_button1_state) {
     int offset = sprintf(json_body, "%s", PREFIX);
@@ -261,6 +258,7 @@ void loop() {
       char* end;
       begin = strchr(response,'{');
       end = strrchr(response,'}');
+      // Serial.println(response);
 
       char json[200];
       strncpy(json, begin, end - begin + 1);
@@ -275,8 +273,8 @@ void loop() {
         Serial.println(error.f_str());
         return;
       }
-      double latitude = doc["location"]["lat"];
-      double longitude = doc["location"]["lng"];
+      latitude = doc["location"]["lat"];
+      longitude = doc["location"]["lng"];
       Serial.printf("lat: %f, lon: %f\n", latitude, longitude);
 
       response[0] = '\0';//clear string
@@ -313,13 +311,10 @@ void loop() {
       //submit to function that performs GET.  It will return output using response_buffer char array
       do_http_request("608dev-2.net", request, response, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, false);
 
-      Serial.println(response);
-      
-      char output[100];
-      sprintf(output, "Current Location\nlat: %f\nlng: %f\n%s", latitude, longitude, response);
-      tft.setCursor(0, 0);
-      tft.fillScreen(TFT_BLACK); //fill background
-      tft.println(output);  
+      location[0] = 0;
+      memset(location, 0, 100);
+      sprintf(location, response);
+      Serial.println(location);
 
     }
     calibrated = 1;
