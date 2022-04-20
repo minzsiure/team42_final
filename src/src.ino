@@ -7,10 +7,26 @@
 #include <WiFiClientSecure.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
+#include <Adafruit_LSM303DLH_Mag.h>
+#include <Adafruit_LSM303_Accel.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+
+#define NEEDLE_LENGTH 40         // Visible length
+#define NEEDLE_WIDTH 5           // Width of needle - make it an odd number
+#define NEEDLE_RADIUS 60         // Radius at tip
+#define NEEDLE_COLOR1 TFT_MAROON // Needle periphery colour
+#define NEEDLE_COLOR2 TFT_RED    // Needle centre colour
+#define SCREEN_CENTRE_X 64
+#define SCREEN_CENTRE_Y 80
 
 // TFT-related definitions
 
 TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite needle = TFT_eSprite(&tft); // Sprite object for needle
+uint16_t *tft_buffer;
+bool buffer_loaded = false;
+
 const int SCREEN_HEIGHT = 160;
 const int SCREEN_WIDTH = 128;
 const int BUTTON_PIN_1 = 45;
@@ -18,8 +34,10 @@ const int BUTTON_PIN_2 = 39;
 const int BUTTON_PIN_3 = 38;
 const int BUTTON_PIN_4 = 34;
 
-const int LOOP_PERIOD = 40;
-const int LOCATION_PERIOD = 15000;
+const int LOOP_PERIOD = 200;
+const int LOCATION_PERIOD = 30000;
+
+const float Pi = 3.1415926;
 
 MPU6050 imu; // imu object called, appropriately, imu
 
@@ -41,20 +59,29 @@ uint32_t location_timer;
 WiFiClientSecure client; // global WiFiClient Secure object
 WiFiClient client2;      // global WiFiClient Secure object
 
-inline int sign_db(double x){
-    return ((x>0)?1:((x<0)?-1:0));
-}
+Adafruit_LSM303DLH_Mag_Unified mag = Adafruit_LSM303DLH_Mag_Unified(12345);
+Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
 
-inline bool equal_db(double x, double y){
-    return abs(x-y)<1e-8;
-}
-
-// used to get x,y values from IMU accelerometer!
-void get_angle(float *x, float *y)
+inline int sign_db(double x)
 {
-    imu.readAccelData(imu.accelCount);
-    *x = imu.accelCount[0] * imu.aRes;
-    *y = imu.accelCount[1] * imu.aRes;
+    return ((x > 0) ? 1 : ((x < 0) ? -1 : 0));
+}
+
+inline bool equal_db(double x, double y)
+{
+    return abs(x - y) < 1e-8;
+}
+
+// used to get cw offset from North (positive y-axis) in degrees from (x00, y00) to (x11, y11)
+float direction(double x00, double y00, double x11, double y11)
+{
+    float degree_from_pos_x_ccw = (atan2(y11 - y00, x11 - x00) * 180) / 3.1415926;
+    float degree_from_pos_x_cw_0_360 = 360 - degree_from_pos_x_ccw - ((degree_from_pos_x_ccw < 0.0) ? 360 : 0);
+    float degree_from_pos_y_cw_0_360 = 90 + degree_from_pos_x_cw_0_360 - ((degree_from_pos_x_cw_0_360 > 270) ? 360 : 0);
+    // Serial.println(degree_from_pos_x_ccw);
+    // Serial.println(degree_from_pos_x_cw_0_360);
+    // Serial.println(degree_from_pos_y_cw_0_360);
+    return degree_from_pos_y_cw_0_360;
 }
 
 // enum for button states
@@ -188,11 +215,12 @@ enum beaver_state
 class PocketBeaver
 {
 private:
-    double cur_lat;      // current latitude of ESP32
-    double cur_lon;      // current longitude of ESP32
+    double cur_lat; // current latitude of ESP32
+    double cur_lon; // current longitude of ESP32
     char cur_building_id[10];
     char cur_intro[400]; // introduction for current building (too long to store every introduction locally)
     int cur_no;          // current building Number (e.g. 7 = this is the seventh building in this route)
+    float heading;
 
     char building_ids[20][10];     // list of building ID in trip (e.g. "W20")
     double building_lat[20];       // list of building center point latitudes in trip
@@ -207,29 +235,29 @@ private:
 
     beaver_state state, old_state;
 
-    bool compare(double lat, double lon)
-    {
-        return (equal_db(cur_lat, lat) && equal_db(cur_lon, lon));
-    }
-
     void get_route_info()
     {
         return;
     }
 
-    bool __within_area(double poly[][2], int len){
+    bool __within_area(double poly[][2], int len)
+    {
         Serial.printf("Begin checking area\n");
-        for(int i = 0;i<len;i++){
+        for (int i = 0; i < len; i++)
+        {
             poly[i][0] = poly[i][0] - cur_lat;
             poly[i][1] = poly[i][1] - cur_lon;
         }
         Serial.printf("Begin checking area each line\n");
         int count = 0;
-        for(int i=0;i<len-1;i++){
-            if(equal_db(poly[i][0], poly[i+1][0]) || sign_db(poly[i][0]) == sign_db(poly[i+1][0])) continue;
-            double p = (poly[i][1]*poly[i+1][0]-poly[i+1][1]*poly[i][0])/(poly[i+1][0]-poly[i][0]);
+        for (int i = 0; i < len - 1; i++)
+        {
+            if (equal_db(poly[i][0], poly[i + 1][0]) || sign_db(poly[i][0]) == sign_db(poly[i + 1][0]))
+                continue;
+            double p = (poly[i][1] * poly[i + 1][0] - poly[i + 1][1] * poly[i][0]) / (poly[i + 1][0] - poly[i][0]);
             Serial.printf("    get k for line %d: %f\n", i, p);
-            if(sign_db(p)==1) count ++;
+            if (sign_db(p) == 1)
+                count++;
         }
         Serial.printf("Finish checking area each line\n");
         return ((count & 1) == 1);
@@ -241,9 +269,12 @@ private:
         double building_3[5][2] = {{42.35938973414583, -71.09283070230508}, {42.35957924430909, -71.0922660657068}, {42.359398904005594, -71.09214610628298}, {42.35923078969722, -71.09272935727462}, {42.35938973414583, -71.09283070230508}};
         double building_10[5][2] = {{42.35985892359337, -71.0923922299534}, {42.36000869668367, -71.09195996237447}, {42.35952575360194, -71.09165799554903}, {42.35937597936053, -71.09212956018057}, {42.35985892359337, -71.0923922299534}};
         Serial.printf("Finished defining building polygons\n");
-        if(__within_area(building_7, 7)) sprintf(cur_building_id, "7"), cur_no=0, strcpy(cur_intro, building_intros[0]);
-        else if(__within_area(building_3, 5)) sprintf(cur_building_id, "3"), cur_no=1, strcpy(cur_intro, building_intros[1]);
-        else if(__within_area(building_10, 5)) sprintf(cur_building_id, "10"), cur_no=2, strcpy(cur_intro, building_intros[2]);
+        if (__within_area(building_7, 7))
+            sprintf(cur_building_id, "7"), cur_no = 0, strcpy(cur_intro, building_intros[0]);
+        else if (__within_area(building_3, 5))
+            sprintf(cur_building_id, "3"), cur_no = 1, strcpy(cur_intro, building_intros[1]);
+        else if (__within_area(building_10, 5))
+            sprintf(cur_building_id, "10"), cur_no = 2, strcpy(cur_intro, building_intros[2]);
         Serial.printf("Finished checking buildings, cur_no = %d, cur_id = %s\n", cur_no, cur_building_id);
         return;
     }
@@ -276,11 +307,25 @@ public:
         old_state = S111;
         cur_lat = 0;
         cur_lon = 0;
+        heading = 0;
         // should be getting all possible routes from team server, using fake data right now
         total_route = 3;
         sprintf(route_name[0], "Infinite");
         sprintf(route_name[1], "30s");
         sprintf(route_name[2], "Dorm St.");
+        // initialize route with fake data right now
+        sprintf(building_ids[0], "7");
+        sprintf(building_ids[1], "3");
+        sprintf(building_ids[2], "10");
+        sprintf(building_intros[0], "MIT Building 7, named Rogers Building and home to the iconic Lobby 7, hosts the Department of Architecture and a series of undergraduate-related offices. It also marks the start of the famous Infinite Corridor.");
+        sprintf(building_intros[1], "MIT Building 3, part of the Maclaurin Buildings, hosts the Department of Mechanical Engineering as well as series of graduate-related offices. It is the second 2nd along the Infinite Corridor (from west to east).");
+        sprintf(building_intros[2], "MIT Building 10, part of the Maclaurin Buildings, is the place where the iconic Great Dome resides, as well as being the home to the Barker Engineering Library. It is the 3rd building along the Infinite Corridor (from west to east).");
+        building_lat[0] = 42.359247834274086;
+        building_lat[1] = 0;
+        building_lat[2] = 0;
+        building_lon[0] = -71.09309433468378;
+        building_lon[1] = 0;
+        building_lon[2] = 0;
         route_selection = 0;
         // should be initializing magnetometer and IMU here
         // sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: 7",);
@@ -295,13 +340,37 @@ public:
 
         bool location_changed = false, building_changed = false;
         int before_check_building_no = cur_no;
-        if (compare(lat, lon))
+        if (!equal_db(lat, 1000) && !equal_db(lon, 1000))
         {
+            Serial.printf("Chaning lat/lon: %f %f %f %f\n", lat, lon, cur_lat, cur_lon);
             location_changed = true;
             cur_lat = lat;
             cur_lon = lon;
             get_current_building();
             building_changed = (cur_no != before_check_building_no);
+        }
+
+        sensors_event_t mag_event;
+        mag.getEvent(&mag_event);
+        sensors_event_t accel_event;
+        accel.getEvent(&accel_event);
+
+        if (accel_event.acceleration.z < 9.8 && accel_event.acceleration.z > 9.4)
+        {
+            heading = (atan2(mag_event.magnetic.y, mag_event.magnetic.x) * 180) / Pi;
+
+            // Normalize to 0-360
+            if (heading < 0)
+                heading = 360 + heading;
+
+            // Adjust clock direction
+            heading = 360 - heading;
+            // Serial.printf("Offsets: original %f, direction %f\n", heading, direction(cur_lon, cur_lat, building_lon[cur_no + 1], building_lat[cur_no + 1]));
+
+            // Add direction offset
+            heading = heading + direction(cur_lon, cur_lat, building_lon[cur_no + 1], building_lat[cur_no + 1]) + 180;
+            while (heading >= 360)
+                heading = heading - 360;
         }
 
         switch (state)
@@ -330,9 +399,11 @@ public:
                 tft.printf("Please choose between the %d routes below, scrolling with Buttons 2 and 3, confirming with 1:\n");
                 for (int i = 0; i < total_route; i++)
                 {
-                    if(i==route_selection) tft.setTextColor(TFT_BLACK, TFT_WHITE);
+                    if (i == route_selection)
+                        tft.setTextColor(TFT_BLACK, TFT_WHITE);
                     tft.printf("Route %d: %s\n", i, route_name[i]);
-                    if(i==route_selection) tft.setTextColor(TFT_GREEN, TFT_BLACK);
+                    if (i == route_selection)
+                        tft.setTextColor(TFT_GREEN, TFT_BLACK);
                 }
             }
             old_state = state;
@@ -353,7 +424,7 @@ public:
                 tft.printf("Selected Route %d! Downloading Route Info ...", route_selection);
                 sleep(1); // TO BE DEPRECATED: Dangerous!
                 get_route_info();
-                cur_no = -1;        
+                cur_no = -1;
                 sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[0]);
                 old_state = state;
                 state = S03;
@@ -361,22 +432,27 @@ public:
             break;
 
         case S03:
+
             if (old_state != state || location_changed)
             {
                 // should be printing compass here, printing foo direction instead
                 Serial.println("Entered S03!");
                 tft.fillScreen(TFT_BLACK);
-                tft.setCursor(0, 0);
-                tft.printf("%s", foo_direction);
+                tft.setTextColor(TFT_RED, TFT_BLACK);
+                tft.setTextDatum(MC_DATUM);
+                tft.drawString("N", SCREEN_CENTRE_X, SCREEN_CENTRE_Y, 4);
             }
+
+            plotNeedle(heading, 10);
+
             if (cur_no == 0)
             {
                 Serial.println("S03 reached starting point!");
                 tft.fillScreen(TFT_BLACK);
                 tft.setCursor(0, 0);
                 tft.printf("Reached starting point!, Trip starting in 5 seconds......");
-                sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[cur_no+1]);
-                //get_building_intro();
+                sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[cur_no + 1]);
+                // get_building_intro();
                 sleep(5); // TO BE DEPRECATED
                 old_state = state;
                 state = S11;
@@ -388,54 +464,68 @@ public:
             break;
 
         case S10:
-            if(old_state != state){
+            if (old_state != state)
+            {
                 tft.fillScreen(TFT_BLACK);
                 tft.setCursor(0, 0);
                 tft.printf("Reached new point!");
-                sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[cur_no+1]);
-                //get_building_intro();
-                sleep(5); //TO BE DEPRECATED
+                sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[cur_no + 1]);
+                // get_building_intro();
+                sleep(5); // TO BE DEPRECATED
                 old_state = state;
                 state = S11;
             }
             break;
 
-
         case S11:
-            if(old_state != state){
+            if (old_state != state)
+            {
                 tft.fillScreen(TFT_BLACK);
+                tft.setTextColor(TFT_GREEN, TFT_BLACK);
+                tft.setTextDatum(TL_DATUM);
                 tft.setCursor(0, 0);
                 tft.printf("%s", cur_intro);
             }
-            if(building_changed){
+            if (building_changed)
+            {
                 old_state = state;
                 state = S10;
             }
-            else{
-                if(button3 == 1 || button2 == 1){
+            else
+            {
+                if (button3 == 1 || button2 == 1)
+                {
                     old_state = state;
                     state = S12;
                 }
-                else old_state = state;
+                else
+                    old_state = state;
             }
             break;
 
         case S12:
-            if(old_state != state){
+            if (old_state != state)
+            {
                 tft.fillScreen(TFT_BLACK);
-                tft.setCursor(0, 0);
-                tft.printf("%s", foo_direction);
+                tft.setTextColor(TFT_RED, TFT_BLACK);
+                tft.setTextDatum(MC_DATUM);
+                tft.drawString("N", SCREEN_CENTRE_X, SCREEN_CENTRE_Y, 4);
             }
-            if(building_changed){
+            plotNeedle(heading, 10);
+            if (building_changed)
+            {
                 old_state = state;
                 state = S10;
             }
-            else{
-                if(button3 == 1 || button2 == 1){
+            else
+            {
+                if (button3 == 1 || button2 == 1)
+                {
                     old_state = state;
                     state = S11;
                 }
-                else old_state = state;
+                else
+                    old_state = state;
             }
             break;
 
@@ -447,13 +537,6 @@ public:
                 ; // TO BE DEPRECATED: dangerous!
             break;
         }
-        // initialize route with fake data right now
-        sprintf(building_ids[0], "7");
-        sprintf(building_ids[1], "3");
-        sprintf(building_ids[2], "10");
-        sprintf(building_intros[0], "MIT Building 7, named Rogers Building and home to the iconic Lobby 7, hosts the Department of Architecture and a series of undergraduate-related offices. It also marks the start of the famous Infinite Corridor.");
-        sprintf(building_intros[1], "MIT Building 3, part of the Maclaurin Buildings, hosts the Department of Mechanical Engineering as well as series of graduate-related offices. It is the second 2nd along the Infinite Corridor (from west to east).");
-        sprintf(building_intros[2], "MIT Building 10, part of the Maclaurin Buildings, is the place where the iconic Great Dome resides, as well as being the home to the Barker Engineering Library. It is the 3rd building along the Infinite Corridor (from west to east).");
     }
 };
 
@@ -468,10 +551,10 @@ void setup()
     Serial.begin(115200); // for debugging if needed.
 
     // SET UP SCREEN:
-    tft.init();                            // init screen
-    tft.setRotation(2);                    // adjust rotation
-    tft.setTextSize(1);                    // default font size, change if you want
-    tft.fillScreen(TFT_BLACK);             // fill background
+    tft.init();                             // init screen
+    tft.setRotation(2);                     // adjust rotation
+    tft.setTextSize(1);                     // default font size, change if you want
+    tft.fillScreen(TFT_BLACK);              // fill background
     tft.setTextColor(TFT_GREEN, TFT_BLACK); // set color of font to hot pink foreground, black background
     tft.setCursor(0, 0);
     tft.println("Initializing......");
@@ -536,16 +619,18 @@ void setup()
         Serial.println(WiFi.status());
         ESP.restart(); // restart the ESP (proper way)
     }
-    if (imu.setupIMU(1))
-    {
-        Serial.println("IMU Connected!");
-    }
-    else
-    {
-        Serial.println("IMU Not Connected :/");
-        Serial.println("Restarting");
-        ESP.restart(); // restart the ESP (proper way)
-    }
+    // if (imu.setupIMU(1))
+    // {
+    //     Serial.println("IMU Connected!");
+    // }
+    // else
+    // {
+    //     Serial.println("IMU Not Connected :/");
+    //     Serial.println("Restarting");
+    //     ESP.restart(); // restart the ESP (proper way)
+    // }
+
+    setup_compass();
 
     primary_timer = millis();
     location_timer = millis();
@@ -554,14 +639,12 @@ void setup()
 void loop()
 {
 
-    float x, y;
-    get_angle(&x, &y);          // get angle values
     int bv1 = button1.update(); // get button1 value
     int bv2 = button2.update(); // get button2 value
     int bv3 = button3.update(); // get button3 value
     int bv4 = button4.update(); // get button4 value
 
-    double lat, lon;
+    double lat = 1000, lon = 1000;
     if (millis() - location_timer > LOCATION_PERIOD)
     {
         get_location(&lat, &lon);
