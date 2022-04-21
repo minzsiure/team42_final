@@ -58,6 +58,6 @@ def request_handler(request):
             out['image'].append("<div><img src='data:image/png;base64, "+image[2]+"'/></div>")
         conn.commit() # commit commands
         conn.close() # close connection to database
-        return out['image']
+        return out
 
 
