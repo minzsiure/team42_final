@@ -1,5 +1,6 @@
 import requests
 import sqlite3
+import json
 ht_db = '/var/jail/home/team42/608_team42_final/route_data.db'
 
 
@@ -18,4 +19,4 @@ def request_handler(request):
             result["name_routes"] = routes[0][0]
 
             # return JSON object with 1. number of routes, and 2. name of each route
-            return result
+            return json.dumps(result)

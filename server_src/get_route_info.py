@@ -1,5 +1,6 @@
 import requests
 import sqlite3
+import json
 ht_db = '/var/jail/home/team42/608_team42_final/route_data.db'
 
 
@@ -21,4 +22,4 @@ def request_handler(request):
 
             # return JSON object with 1. list of buildings in the selected route, and
             # 2. list of center cooridnates of the buildings in order
-            return result
+            return json.dumps(result)
