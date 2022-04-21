@@ -39,8 +39,8 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 ## API Request Handlers
 | HTTP Verb  | Endpoint | Description|
 | :------------ |:---------------:| -----|
-| `GET` | /get_route_list.py| This endpoint returns number of routes avaliable, the name of each route, and a list of IDs of buildings in the route (in order) as a JSON object with parameters `num_routes`, `name_routes`, and `route_building_id`. |
-| `GET` | /get_route_info.py?route_id={id}| This endpoint takes in a route id and return 1. a list of buildings in the selected route and 2. a list of center coordinates of the buildings in the corresponding route order as a JSON object with parameters 'building_names' and 'route_center_coordinates'. |
-| `GET` | /get_current_building.py?lat={latitude}&lon={longitude}| This endpoint takes in a latitute value and longitude value, and returns `string` current building name where the user is located in. |
-| `GET` | /get_building_intro.py?building_id={id}&maxlen={number}| This endpoint takes in a building id and a maxlen parameter of the maximum words (in full sentenses) we want to display and return the correpsonding `string` text introduction of the building. |
+| `GET` | /get_route_list.py| This endpoint returns number of routes avaliable and `list` the name of each route as a JSON object with parameters `num_routes` and `name_routes``. |
+| `GET` | /get_route_info.py?route_id={id}| This endpoint takes in a route id and return 1. a `list` of buildings in the selected route and 2. a `list` of center coordinates of the buildings in the corresponding route order, and 3. a `list` of building IDs in the selected route as a JSON object with parameters `building_names`, `route_center_coordinates`, and `route_building_id`. |
+| `GET` | /get_current_building.py?lat={latitude}&lon={longitude}| This endpoint takes in a latitute value and longitude value, and returns 1.`string` current building name where the user is located in, and 2. `string` corresponding current building id as a JSON object with parameters `current_building_name` and `current_building_id` . |
+| `GET` | /get_building_intro.py?building_id={id}&maxlen={number}| This endpoint takes in a building id and a maxlen parameter of the maximum words (in full sentenses) we want to display and return the correpsonding `string` text introduction of the building as a JSON object with parameter `text_intro`. |
 
