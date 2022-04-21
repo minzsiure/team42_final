@@ -16,8 +16,7 @@ def request_handler(request):
 
             result = {}
             result["num_routes"] = len(routes)
-            result["name_routes"] = routes[0][0]
-            result["route_building_id"] = routes[0][3]
+            result["name_routes"] = [routes[i][0] for i in range(len(routes))]
 
             # return JSON object with 1. number of routes, and 2. name of each route
             # EDIT: also return building ID
