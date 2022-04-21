@@ -79,5 +79,8 @@ def request_handler(request):
     result = {}
     building_name = get_area((lat, lon), buildings)
     result["current_building_name"] = building_name
-    result["current_building_id"] = ids[building_name]
+    if building_name == "Off Campus":
+        result["current_building_id"] = "-1"
+    else:
+        result["current_building_id"] = ids[building_name]
     return json.dumps(result)
