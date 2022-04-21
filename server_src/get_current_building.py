@@ -1,5 +1,6 @@
 import requests
 import sqlite3
+import json
 ht_db = '/var/jail/home/team42/608_team42_final/building_data.db'
 
 
@@ -68,8 +69,15 @@ def request_handler(request):
             '''SELECT DISTINCT * FROM building_table;''').fetchall()
 
     # create a dictionary `location` with keys being location_name and values being a list of coordinates
+
     buildings = {}
+    ids = {}
     for loc in raw_info:
         buildings[loc[0]] = eval(loc[2])
+        ids[loc[0]] = loc[1]
 
-    return get_area((lat, lon), buildings)
+    result = {}
+    building_name = get_area((lat, lon), buildings)
+    result["current_building_name"] = building_name
+    result["current_building_id"] = ids[building_name]
+    return json.dumps(result)
