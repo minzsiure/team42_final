@@ -75,7 +75,7 @@ void get_location(double* lat, double* lon)
         Serial.printf("Finish collecting AP info\n");
 
         sprintf(json_body + offset, "%s", SUFFIX);
-        // Serial.println(json_body);
+        Serial.println(json_body);
         int len = strlen(json_body);
         // Make a HTTP request:
         Serial.printf("Begin making HTTPS request\n");
@@ -96,9 +96,9 @@ void get_location(double* lat, double* lon)
 
         Serial.printf("Finish sending request\n");
 
-        // Serial.println("-----------");
-        // Serial.println(response);
-        // Serial.println("-----------");
+        Serial.println("-----------");
+        Serial.println(response);
+        Serial.println("-----------");
 
         char *starting = strchr(response, '{');
         char *ending = strrchr(response, '}');
