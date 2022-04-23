@@ -43,4 +43,9 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `GET` | /get_route_info.py?route_id={id}| This endpoint takes in a route id and return 1. a `list` of buildings in the selected route and 2. a `list` of center coordinates of the buildings in the corresponding route order, and 3. a `list` of building IDs in the selected route as a JSON object with parameters `building_names`, `route_center_coordinates`, and `route_building_id`. |
 | `GET` | /get_current_building.py?lat={latitude}&lon={longitude}| This endpoint takes in a latitute value and longitude value, and returns 1.`string` current building name where the user is located in, and 2. `string` corresponding current building id as a JSON object with parameters `current_building_name` and `current_building_id` . |
 | `GET` | /get_building_intro.py?building_id={id}&maxlen={number}| This endpoint takes in a building id and a maxlen parameter of the maximum words (in full sentenses) we want to display and return the correpsonding `string` text introduction of the building as a JSON object with parameter `text_intro`. |
+| `POST` | /image_request.py | The esp32 could post images in the form of base64 encoding under parameter `image_encoding` with `location` and `user_id`. |
+| `GET` | /image_request.py | This end point returns all the images stored in the database along with the location and user_id. |
+| `GET` | /image_request.py?location={location_name} | This end point returns the image filtered based on location name. |
+| `GET` | /image_request.py?user_id={user_id} | This end point returns the image filtered based on user_id. |
+| `GET` | /image_request.py?location={location_name}&user_id={user_id} | This end point returns the image filtered based on location name and user id. |
 
