@@ -25,7 +25,7 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | :------------ |:---------------:| -----|
 | `building_name`      | string| name of the building |
 | `user`    | int       |   id of the user who uploaded the image |
-| `image_url` | string        |  the url of the uploaded image |
+| `image_encoding` | string        |  the base64 encoding of the uploaded image |
 
 ### route_data.db
 | Variable Name  | Data Type | Description|
