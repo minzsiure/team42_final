@@ -49,21 +49,27 @@ def request_handler(request):
         # connect to that database (will create if it doesn't already exist)
         conn = sqlite3.connect(visits_db)
         c = conn.cursor()  # move cursor into database (allows us to execute commands)
-        if location and user_id:
+        if location and user_id and location != 'all' and user_id != 'all':
             all_image = c.execute(
                 '''SELECT * FROM image_table WHERE location_name = ? AND user = ?''', (location, user_id)).fetchall()
-        elif location:
+        elif location and location != 'all':
             all_image = c.execute(
                 '''SELECT * FROM image_table WHERE location_name = ? ''', (location, )).fetchall()
-        elif user_id:
+        elif user_id and user_id != 'all':
             all_image = c.execute(
                 '''SELECT * FROM image_table WHERE user = ? ''', (user_id, )).fetchall()
         else:
             all_image = c.execute('''SELECT * FROM image_table''').fetchall()
         out = {}
-        if location:
+        if location == 'all':
+            out['location'] = [image[0] for image in all_image]
+            return out
+        elif location:
             out['location'] = location
-        if user_id:
+        if user_id == 'all':
+            out['user'] = [image[1] for image in all_image]
+            return out
+        elif user_id:
             out['user'] = user_id
         out['image'] = []
         for image in all_image:
