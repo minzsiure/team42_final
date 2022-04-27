@@ -38,6 +38,13 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `route_building_id` | list        |  ids of the buildings in the route listed in order |
 | `route_center_coordinates` | list        |  center coordinates of the buildings in the route listed in order |
 
+### step_data.db
+| Variable Name  | Data Type | Description|
+| :------------ |:---------------:| -----|
+| `username` | string| name of the user |
+| `date` | datetime| date |
+| `step`    | int       |   number of steps recorded during a day |
+
 ## API Request Handlers
 | HTTP Verb  | Endpoint | Description|
 | :------------ |:---------------:| -----|
