@@ -35,20 +35,20 @@ def request_handler(request):
             
             # one user all time
             if view == 3: 
-                user = request['values']['user']
+                username = request['values']['username']
                 with sqlite3.connect(step_db) as c:
                     table = c.execute(
-                        '''SELECT * FROM step_table WHERE username == ?;''', (user, )).fetchall()
+                        '''SELECT * FROM step_table WHERE username == ?;''', (username, )).fetchall()
                 return table
             
             # one user one day
             if view == 4: 
                 date = request['values']['date']
                 datetime_object = datetime.strptime(date, '%Y-%m-%d').date()
-                user = request['values']['user']  # 8986105
+                username = request['values']['username']  # 8986105
                 with sqlite3.connect(step_db) as c:
                     table = c.execute(
-                        '''SELECT * FROM step_table WHERE username == ? AND date == ?;''', (user, datetime_object)).fetchall()
+                        '''SELECT * FROM step_table WHERE username == ? AND date == ?;''', (username, datetime_object)).fetchall()
                 return table
                 
     if request["method"] == "POST":
