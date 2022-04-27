@@ -2,6 +2,7 @@ import sqlite3
 import urllib.request
 from PIL import Image
 import base64
+import json
 
 visits_db = '/var/jail/home/team42/608_team42_final/user_image.db'
 
@@ -63,20 +64,20 @@ def request_handler(request):
         out = {}
         if location == 'all':
             out['location'] = [image[0] for image in all_image]
-            return out
+            return json.dumps(out)
         elif location:
             out['location'] = location
         if user_id == 'all':
             out['user'] = [image[1] for image in all_image]
-            return out
+            return json.dumps(out)
         elif user_id:
             out['user'] = user_id
         out['image'] = []
         for image in all_image:
             out['image'].append(
-                "<div><img src='data:image/png;base64, "+image[2]+"'/></div>")
+                "<div class=\"d-flex align-items-baseline\"><img height = \"300\" class=\"rounded\" src='data:image/png;base64, " + image[2] + "'/></div>")
         conn.commit()  # commit commands
         conn.close()  # close connection to database
         if img:
             return out['image']
-        return out
+        return json.dumps(out)
