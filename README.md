@@ -1,4 +1,6 @@
 # Spring 2022 6.08 Team 42 Final Project Overview
+[Main website](https://608dev-2.net/sandbox/sc/team42/608_team42_final/show_photo_website.py)
+
 Given the increasing demand for campus touring at MIT and the shortage of trained student tour guides, our project aims to implement an open-ended, interactive tourist guide to the MIT campus that can come in handy. Whether they are prospective students or just visiting MIT, they can use our application to explore our dynamic campus and experience firsthand how MIT is making a better world.
 
 ## ESP32 Functionality Description
