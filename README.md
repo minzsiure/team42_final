@@ -57,4 +57,5 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `GET` | /image_request.py?location={location_name} | This endpoint returns the image filtered based on location name. |
 | `GET` | /image_request.py?user_id={user_id} | This endpoint returns the image filtered based on user_id. |
 | `GET` | /image_request.py?location={location_name}&user_id={user_id} | This endpoint returns the image filtered based on location name and user id. |
+| `GET` | /create_step_db.py?view={view_index}&username={user_id}&date={datetime} | This endpoint returns step data. When view = 1, return all users and all dates; view = 2, return all users during a specific date; view = 3, return data for specific user for all dates; view = 4, specific user and specific date. |
 
