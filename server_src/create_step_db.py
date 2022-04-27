@@ -15,8 +15,42 @@ def create_route_data():
 
 def request_handler(request):
     if request["method"] == "GET":
-        with sqlite3.connect(step_db) as c:
-            return c.execute('''SELECT * FROM step_table;''',).fetchall()
+        if 'view' in request['values'].keys():
+            view = int(request['values']['view'])
+            
+            # all user all time
+            if view == 1: 
+                with sqlite3.connect(step_db) as c:
+                    table = c.execute('''SELECT * FROM step_table;''').fetchall()
+                return table
+            
+            # all user one day
+            if view == 2: 
+                date = request['values']['date']
+                datetime_object = datetime.strptime(date, '%Y-%m-%d').date()
+                with sqlite3.connect(step_db) as c:
+                    table = c.execute(
+                        '''SELECT * FROM step_table WHERE date == ?;''', (datetime_object, )).fetchall()
+                return table
+            
+            # one user all time
+            if view == 3: 
+                user = request['values']['user']
+                with sqlite3.connect(step_db) as c:
+                    table = c.execute(
+                        '''SELECT * FROM step_table WHERE username == ?;''', (user, )).fetchall()
+                return table
+            
+            # one user one day
+            if view == 4: 
+                date = request['values']['date']
+                datetime_object = datetime.strptime(date, '%Y-%m-%d').date()
+                user = request['values']['user']  # 8986105
+                with sqlite3.connect(step_db) as c:
+                    table = c.execute(
+                        '''SELECT * FROM step_table WHERE username == ? AND date == ?;''', (user, datetime_object)).fetchall()
+                return table
+                
     if request["method"] == "POST":
         create_route_data()
         username = request['form']['username']
@@ -29,9 +63,12 @@ def request_handler(request):
             if len(matched_users) == 0 or date_now not in [i[2] for i in matched_users]:
                 c.execute(
                     '''INSERT into step_table VALUES (?,?,?);''', (username, step, datetime.now().date()))
+                return f'{username}: {step}'
             #update existing row
             else: 
-                udpate_query = ''' UPDATE step_table SET step = step + ? WHERE username == ? AND date == ?'''
+                udpate_query = ''' UPDATE step_table SET step = step + ? WHERE username == ? AND date == ?;'''
                 # return username, step, date_now, matched_users[0][0], udpate_query
-                c.execute(udpate_query, (step, matched_users[0][0], str(datetime.now().date())))
-                return c.execute('''SELECT * FROM step_table;''',).fetchall()
+                c.execute(udpate_query, (step, matched_users[0][0], date_now))
+                step = c.execute(
+                    '''SELECT step FROM step_table WHERE username = ? AND date == ?;''', (matched_users[0][0], date_now)).fetchone()
+                return f'{username}: {step[0]}'
