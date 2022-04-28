@@ -271,6 +271,7 @@ void loop()
     Serial.printf("audio state = %d\n", int(audio_enabled));
   }
 
+  // ------------------ interaction with serial monitor to control speaker ------------------
   if (Serial.available())
   {
     String inData = "";
@@ -324,6 +325,8 @@ void loop()
 
     int floor_num = 1;
     tft.printf("raw avg_alt: %.2f\n", avg_alt);
+
+    // ------------------ play audio ------------------
     if (strcmp(hayden, location) == 0)
     {
       tft.printf("adjustsed: %.2f\n", avg_alt + hayden_offset);
@@ -344,7 +347,7 @@ void loop()
         floor_num = 2;
       if (audio_enabled)
       {
-        myDFPlayer.play(3); // Play the first mp3
+        myDFPlayer.play(3); // Play the third mp3
         delay(25000);
       }
     }
@@ -355,7 +358,7 @@ void loop()
         floor_num = 2;
       if (audio_enabled)
       {
-        myDFPlayer.play(4); // Play the first mp3
+        myDFPlayer.play(4); // Play the fourth mp3
         delay(32000);
       }
     }
@@ -364,7 +367,7 @@ void loop()
       tft.printf("avg_alt: %.2f\n", avg_alt + offset);
       if (audio_enabled)
       {
-        myDFPlayer.play(2); // Play the first mp3
+        myDFPlayer.play(2); // Play the second mp3
         delay(10000);
       }
     }
@@ -373,6 +376,8 @@ void loop()
     tft.printf("%s\nfloor %d\n", location, floor_num);
     delay(2000);
   }
+
+
 
   if (calibrated == 0 || (!button39_state && button39_state != old_button39_state))
   {

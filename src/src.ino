@@ -10,6 +10,9 @@
 #include <Adafruit_LSM303DLH_Mag.h>
 #include <Adafruit_LSM303_Accel.h>
 #include <Adafruit_Sensor.h>
+//#include <ESP32WebServer.h>
+//#include <ArduCAM.h>
+//#include "memorysaver.h"
 #include <Wire.h>
 
 #define NEEDLE_LENGTH 40         // Visible length
@@ -630,6 +633,14 @@ public:
                 else
                     old_state = state;
             }
+            break;
+
+        case S131:
+            if (old_state != state)
+            {
+                server.handleClient();
+            }
+            
             break;
 
         default:
