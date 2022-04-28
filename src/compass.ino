@@ -31,7 +31,7 @@ void createNeedle(void)
 void plotNeedle(int16_t angle, uint16_t ms_delay)
 {
     
-    Serial.println(angle);
+    // Serial.println(angle);
 
     static int16_t old_angle = -180; // Starts at -180 degrees
 
