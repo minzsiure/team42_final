@@ -35,13 +35,15 @@ def insert_image(location, user_id, image_encoding):
 def request_handler(request):
     if request['method'] == 'POST':
         try:
-            location = request['form']['location']
-            user_id = request['form']['user_id']
-            image_encoding = request['form']['image_encoding']
+            data = eval(request['data'])
+            location = data['location']
+            user_id = data['user_id']
+            image_encoding = data['image_encoding']
             insert_image(location, user_id, image_encoding)
         except:
-            return "Lack one or more arguments: location, user_id, image_url."
-        return {'location': location, 'user_id': user_id, 'image_encoding': image_encoding}
+            return "Missing value: location, user_id, and/or image_encoding"
+        return request['data']
+        # return {'location': location, 'user_id': user_id, 'image_encoding': image_encoding}
     elif request['method'] == 'GET':
         location = request['values']['location'] if 'location' in request['values'] else None
         user_id = request['values']['user_id'] if 'user_id' in request['values'] else None
