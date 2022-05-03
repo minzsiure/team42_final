@@ -2,11 +2,9 @@
 #include <WiFiClientSecure.h>
 #include <WiFiClient.h>
 #include <Wire.h>
-//#include <ESP32WebServer.h>
 #include <ArduCAM.h>
 #include <SPI.h>
 #include <string.h>
-//#include <ArduinoJson.h>
 #include "memorysaver.h"
 
 #if !(defined ESP32 )
@@ -107,6 +105,7 @@ void camCapture(ArduCAM myCAM) {
   }
   memcpy(holder, buffer, sizeof(buffer));
   memset(image_data, 0, sizeof(image_data));
+  base64_encode(image_data, holder, i);
   memset(body, 0, sizeof(body));
 
   sprintf(body,"{\"location\":\'Test\', \"user_id\":0, \"image_encoding\":\'%s\'}", image_data);
@@ -119,6 +118,7 @@ void camCapture(ArduCAM myCAM) {
   offset += sprintf(request_buffer + offset, "Content-Type: application/json\r\n");
   offset += sprintf(request_buffer + offset, "Content-Length: %d\r\n\r\n", strlen(body));
   offset += sprintf(request_buffer + offset, body);
+  Serial.println(request_buffer);
   do_http_request("608dev-2.net", request_buffer, response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, false);
   Serial.println("-----------");
   Serial.println(response_buffer);
