@@ -53,8 +53,9 @@ def request_handler(request):
                 """CREATE TABLE IF NOT EXISTS building_table (building_name text, building_id text, coordinates text, text_intro text, audio_data text);""")
             locations = c.execute(
                 '''SELECT DISTINCT * FROM building_table;''').fetchall()
+
             all_coordinates = [eval(locations[i][2])
                                for i in range(len(locations))]
             all_text_intros = [eval(locations[i][3])
                                for i in range(len(locations))]
-            return all_coordinates, all_text_intros
+            return locations

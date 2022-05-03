@@ -1,4 +1,6 @@
 # Spring 2022 6.08 Team 42 Final Project Overview
+## [Main website](https://608dev-2.net/sandbox/sc/team42/608_team42_final/show_photo_website.py)
+
 Given the increasing demand for campus touring at MIT and the shortage of trained student tour guides, our project aims to implement an open-ended, interactive tourist guide to the MIT campus that can come in handy. Whether they are prospective students or just visiting MIT, they can use our application to explore our dynamic campus and experience firsthand how MIT is making a better world.
 
 ## ESP32 Functionality Description
@@ -36,6 +38,13 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `route_building_id` | list        |  ids of the buildings in the route listed in order |
 | `route_center_coordinates` | list        |  center coordinates of the buildings in the route listed in order |
 
+### step_data.db
+| Variable Name  | Data Type | Description|
+| :------------ |:---------------:| -----|
+| `username` | string| name of the user |
+| `date` | datetime| date |
+| `step`    | int       |   number of steps recorded during a day |
+
 ## API Request Handlers
 | HTTP Verb  | Endpoint | Description|
 | :------------ |:---------------:| -----|
@@ -48,4 +57,6 @@ All code for the ESP32 is stored in folder ```src/```, consisting of files:
 | `GET` | /image_request.py?location={location_name} | This endpoint returns the image filtered based on location name. |
 | `GET` | /image_request.py?user_id={user_id} | This endpoint returns the image filtered based on user_id. |
 | `GET` | /image_request.py?location={location_name}&user_id={user_id} | This endpoint returns the image filtered based on location name and user id. |
+| `GET` | /create_step_db.py?view={view_index}&username={user_id}&date={datetime} | This endpoint returns step data. When view = 1, return all users and all dates; view = 2, return all users during a specific date; view = 3, return data for specific user for all dates; view = 4, specific user and specific date. |
+| `POST` | /create_step_db.py?username={user_id}&step={step} | This endpoint updates step counter database. If user does not exist or user does not have at current date, create new row with user_id and current date. Otherwise, update existing row by incrementing steps.|
 

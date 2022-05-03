@@ -1,0 +1,105 @@
+body {
+  font-family: "Lato", sans-serif;
+}
+h1,
+h2,
+h3 {
+  font-family: "Alata", sans-serif;
+}
+
+#title {
+  background-color: #3bc7ff;
+  padding: 2% 10% 4%;
+}
+
+.nav-link {
+  font-size: 1.2rem;
+  padding: auto;
+  text-align: center;
+}
+.header {
+  text-align: center;
+  font-size: 75px;
+  margin: 7%;
+}
+
+#explore {
+  background-color: #95ddfc;
+  padding: 6% 10% 0;
+}
+.fav-box {
+  text-align: center;
+  padding-bottom: 6%;
+}
+.fav-icon {
+  color: #1b4e63;
+  padding-bottom: 20px;
+}
+.fav-icon:hover {
+  color: #2b8db5;
+}
+#about {
+  background-color: #ffffde;
+  padding: 6% 10%;
+}
+.about-img {
+  width: 100%;
+}
+.about-text {
+  padding-top: 4%;
+  padding-left: 50px;
+}
+
+#locations {
+  background-color: #ffffde;
+  padding: 6% 10%;
+}
+.locations-img {
+  width: 100%;
+}
+.locations-text {
+  padding-top: 4%;
+  padding-left: 50px;
+}
+
+#users {
+  background-color: white;
+  padding: 6% 10%;
+}
+.users-img {
+  width: 100%;
+}
+.uers-text {
+  padding-top: 0%;
+  padding-left: 50px;
+}
+
+#steps {
+  background-color: #95ddfc;
+  padding: 6% 10%;
+}
+.steps-img {
+  width: 100%;
+}
+.steps-text {
+  padding-top: 0%;
+  padding-left: 50px;
+}
+
+#Interest {
+  background-color: white;
+  padding: 6% 10%;
+}
+
+.card-header {
+  background-color: #95ddfc;
+}
+
+#footer {
+  background-color: #3bc7ff;
+  padding: 6% 10%;
+  text-align: center;
+}
+.foot-icon {
+  padding: 0 20px 40px;
+}

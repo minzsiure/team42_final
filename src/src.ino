@@ -44,8 +44,10 @@ const float Pi = 3.1415926;
 
 MPU6050 imu; // imu object called, appropriately, imu
 
-char network[] = "MIT"; // SSID for 6.08 Lab
+char network[] = "EECS_Labs"; // SSID for 6.08 Lab
 char password[] = "";   // Password for 6.08 Lab
+
+char TEAM_SERVER[] = "608dev-2.net"; // host for team server HTTP calls
 
 // Some constants and some resources:
 const uint16_t RESPONSE_TIMEOUT = 6000; // time for claiming the HTTP response as TIMEOUT
@@ -84,6 +86,7 @@ float direction(double x00, double y00, double x11, double y11)
     // Serial.println(degree_from_pos_x_ccw);
     // Serial.println(degree_from_pos_x_cw_0_360);
     // Serial.println(degree_from_pos_y_cw_0_360);
+    Serial.printf("Location: %f %f %f %f, Degree %f %f %f\n", x00, y00, x11, y11, degree_from_pos_x_ccw, degree_from_pos_x_cw_0_360, degree_from_pos_y_cw_0_360);
     return degree_from_pos_y_cw_0_360;
 }
 
@@ -221,16 +224,17 @@ private:
     double cur_lat; // current latitude of ESP32
     double cur_lon; // current longitude of ESP32
     char cur_building_id[10];
-    char cur_intro[400]; // introduction for current building (too long to store every introduction locally)
-    int cur_no;          // current building Number (e.g. 7 = this is the seventh building in this route)
+    char cur_building_name[20];
+    char cur_building_intro[400]; // introduction for current building (too long to store every introduction locally)
+    int cur_building_no;          // current building Number (e.g. 7 = this is the seventh building in this route)
     float heading;
 
-    char building_ids[20][10];     // list of building ID in trip (e.g. "W20")
-    double building_lat[20];       // list of building center point latitudes in trip
-    double building_lon[20];       // list of building center point longtitudes in trip
-    char building_intros[20][400]; // TO BE DEPRECATED: list of building introductions
-
-    char foo_direction[200]; // TO BE DEPRECATED: direction text telling user to do it themselves
+    int total_building;
+    char building_names[20][20]; // list of building names in trip (e.g. "Stata Center")
+    char building_ids[20][10];   // list of building ID in trip (e.g. "32")
+    double building_lat[20];     // list of building center point latitudes in trip
+    double building_lon[20];     // list of building center point longtitudes in trip
+    char building_intros[20][400];
 
     char route_name[10][20];
     int total_route;
@@ -238,68 +242,147 @@ private:
 
     beaver_state state, old_state;
 
+    void get_route_list()
+    {
+        int req_len = 0;
+        req_len += sprintf(request + req_len, "GET http://608dev-2.net/sandbox/sc/team42/608_team42_final/get_route_list.py HTTP/1.1\r\n");
+        req_len += sprintf(request + req_len, "Host: 608dev-2.net\r\n\r\n");
+        do_http_request(TEAM_SERVER, request, response, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, Serial);
+
+        DynamicJsonDocument doc(1024);
+        deserializeJson(doc, response);
+
+        Serial.printf("Finish deserializing JSON for get_route_list\n");
+
+        total_route = doc["num_routes"];
+        for (int i = 0; i < total_route; i++)
+        {
+            const char *tmp_str = doc["name_routes"][i];
+            Serial.println(tmp_str);
+            sprintf(route_name[i], "%s", tmp_str);
+            Serial.println(route_name[i]);
+        }
+        Serial.printf("Parsed, total routes: %d, first route: %s\n", total_route, route_name[0]);
+    }
+
     void get_route_info()
     {
-        return;
+        int req_len = 0;
+        req_len += sprintf(request + req_len, "GET http://608dev-2.net/sandbox/sc/team42/608_team42_final/get_route_info.py?route_id=%d HTTP/1.1\r\n", route_selection + 1);
+        req_len += sprintf(request + req_len, "Host: 608dev-2.net\r\n\r\n");
+        do_http_request(TEAM_SERVER, request, response, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, Serial);
+
+        DynamicJsonDocument doc(1024);
+        deserializeJson(doc, response);
+
+        Serial.printf("Finish deserializing JSON for get_route_info\n");
+
+        total_building = doc["building_names"].size();
+        const char *tmp_str = "AAAA";
+        Serial.println("Finish Initializing tmp_str");
+        for (int i = 0; i < total_building; i++)
+        {
+            tmp_str = doc["building_names"][i];
+            sprintf(building_names[i], "%s", tmp_str);
+            tmp_str = doc["route_building_id"][i];
+            sprintf(building_ids[i], "%s", tmp_str);
+            building_lat[i] = doc["route_center_coordinates"][i][0];
+            building_lon[i] = doc["route_center_coordinates"][i][1];
+        }
+
+        Serial.printf("Parsed, total buildings: %d\n", total_building);
     }
 
-    bool __within_area(double poly[][2], int len)
-    {
-        Serial.printf("Begin checking area\n");
-        for (int i = 0; i < len; i++)
-        {
-            poly[i][0] = poly[i][0] - cur_lat;
-            poly[i][1] = poly[i][1] - cur_lon;
-        }
-        Serial.printf("Begin checking area each line\n");
-        int count = 0;
-        for (int i = 0; i < len - 1; i++)
-        {
-            if (equal_db(poly[i][0], poly[i + 1][0]) || sign_db(poly[i][0]) == sign_db(poly[i + 1][0]))
-                continue;
-            double p = (poly[i][1] * poly[i + 1][0] - poly[i + 1][1] * poly[i][0]) / (poly[i + 1][0] - poly[i][0]);
-            Serial.printf("    get k for line %d: %f\n", i, p);
-            if (sign_db(p) == 1)
-                count++;
-        }
-        Serial.printf("Finish checking area each line\n");
-        return ((count & 1) == 1);
-    }
+    // bool __within_area(double poly[][2], int len)
+    // {
+    //     Serial.printf("Begin checking area\n");
+    //     for (int i = 0; i < len; i++)
+    //     {
+    //         poly[i][0] = poly[i][0] - cur_lat;
+    //         poly[i][1] = poly[i][1] - cur_lon;
+    //     }
+    //     Serial.printf("Begin checking area each line\n");
+    //     int count = 0;
+    //     for (int i = 0; i < len - 1; i++)
+    //     {
+    //         if (equal_db(poly[i][0], poly[i + 1][0]) || sign_db(poly[i][0]) == sign_db(poly[i + 1][0]))
+    //             continue;
+    //         double p = (poly[i][1] * poly[i + 1][0] - poly[i + 1][1] * poly[i][0]) / (poly[i + 1][0] - poly[i][0]);
+    //         Serial.printf("    get k for line %d: %f\n", i, p);
+    //         if (sign_db(p) == 1)
+    //             count++;
+    //     }
+    //     Serial.printf("Finish checking area each line\n");
+    //     return ((count & 1) == 1);
+    // }
 
-    void get_current_building()
+    // void get_current_building()
+    // {
+    //     double building_7[7][2] = {{42.35955031432619, -71.09356300278161}, {42.359661541063744, -71.09324611026356}, {42.35932248846664, -71.09303546063194}, {42.359386677525606, -71.09283690710286}, {42.35919716678156, -71.09271694767907}, {42.35900612714659, -71.09324021895881}, {42.35955031432619, -71.09356300278161}};
+    //     double building_3[5][2] = {{42.35938973414583, -71.09283070230508}, {42.35957924430909, -71.0922660657068}, {42.359398904005594, -71.09214610628298}, {42.35923078969722, -71.09272935727462}, {42.35938973414583, -71.09283070230508}};
+    //     double building_10[5][2] = {{42.35985892359337, -71.0923922299534}, {42.36000869668367, -71.09195996237447}, {42.35952575360194, -71.09165799554903}, {42.35937597936053, -71.09212956018057}, {42.35985892359337, -71.0923922299534}};
+    //     Serial.printf("Finished defining building polygons\n");
+    //     if (__within_area(building_7, 7))
+    //         sprintf(cur_building_id, "7"), cur_building_no = 0, strcpy(cur_building_intro, building_intros[0]);
+    //     else if (__within_area(building_3, 5))
+    //         sprintf(cur_building_id, "3"), cur_building_no = 1, strcpy(cur_building_intro, building_intros[1]);
+    //     else if (__within_area(building_10, 5))
+    //         sprintf(cur_building_id, "10"), cur_building_no = 2, strcpy(cur_building_intro, building_intros[2]);
+    //     Serial.printf("Finished checking buildings, cur_building_no = %d, cur_id = %s\n", cur_building_no, cur_building_id);
+    //     return;
+    // }
+
+    void get_current_building_new()
     {
-        double building_7[7][2] = {{42.35955031432619, -71.09356300278161}, {42.359661541063744, -71.09324611026356}, {42.35932248846664, -71.09303546063194}, {42.359386677525606, -71.09283690710286}, {42.35919716678156, -71.09271694767907}, {42.35900612714659, -71.09324021895881}, {42.35955031432619, -71.09356300278161}};
-        double building_3[5][2] = {{42.35938973414583, -71.09283070230508}, {42.35957924430909, -71.0922660657068}, {42.359398904005594, -71.09214610628298}, {42.35923078969722, -71.09272935727462}, {42.35938973414583, -71.09283070230508}};
-        double building_10[5][2] = {{42.35985892359337, -71.0923922299534}, {42.36000869668367, -71.09195996237447}, {42.35952575360194, -71.09165799554903}, {42.35937597936053, -71.09212956018057}, {42.35985892359337, -71.0923922299534}};
-        Serial.printf("Finished defining building polygons\n");
-        if (__within_area(building_7, 7))
-            sprintf(cur_building_id, "7"), cur_no = 0, strcpy(cur_intro, building_intros[0]);
-        else if (__within_area(building_3, 5))
-            sprintf(cur_building_id, "3"), cur_no = 1, strcpy(cur_intro, building_intros[1]);
-        else if (__within_area(building_10, 5))
-            sprintf(cur_building_id, "10"), cur_no = 2, strcpy(cur_intro, building_intros[2]);
-        Serial.printf("Finished checking buildings, cur_no = %d, cur_id = %s\n", cur_no, cur_building_id);
-        return;
+        int req_len = 0;
+        req_len += sprintf(request + req_len, "GET https://608dev-2.net/sandbox/sc/team42/608_team42_final/get_current_building.py?lat=%f&lon=%f HTTP/1.1\r\n", cur_lat, cur_lon);
+        req_len += sprintf(request + req_len, "Host: 608dev-2.net\r\n\r\n");
+        do_http_request(TEAM_SERVER, request, response, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, Serial);
+
+        DynamicJsonDocument doc(1024);
+        deserializeJson(doc, response);
+
+        Serial.printf("Finish deserializing JSON for get_current_building\n");
+        const char *tmp_str = doc["current_building_id"];
+        if (strcmp(tmp_str, "-1") == 0)
+        {
+            Serial.println("Get off campus, not updating buildings");
+            return;
+        }
+        sprintf(cur_building_id, "%s", tmp_str);
+        tmp_str = doc["current_building_name"];
+        sprintf(cur_building_name, "%s", tmp_str);
+        cur_building_no = -1;
+        for (int i = 0; i < total_building; i++)
+        {
+            Serial.printf("    Comparing %s %s %s\n", cur_building_id, building_ids[i], building_names[i]);
+            if (strcmp(cur_building_id, building_ids[i]) == 0)
+            {
+                cur_building_no = i;
+                break;
+            }
+        }
+        Serial.printf("Finished checking buildings, cur_building_no = %d, cur_id = %s, cur_name = %s\n", cur_building_no, cur_building_id, cur_building_name);
     }
 
     void get_building_intro()
     {
-        // this function should query an API in the team server. Fake data and local storage is used for now.
-        int pos;
-        for (pos = 0; pos < 2; pos++)
-        {
-            if (strcmp(building_ids[pos], building_ids[cur_no]) == 0)
-            {
-                sprintf(cur_intro, "%s", building_intros[pos]);
-                return;
-            }
-        }
-        sprintf(cur_intro, "Cannot find building introduction, please contact support team!");
+        int req_len = 0;
+        req_len += sprintf(request + req_len, "GET https://608dev-2.net/sandbox/sc/team42/608_team42_final/get_building_intro.py?building_id=%s&max_len=400 HTTP/1.1\r\n", cur_building_id);
+        req_len += sprintf(request + req_len, "Host: 608dev-2.net\r\n\r\n");
+        do_http_request(TEAM_SERVER, request, response, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, Serial);
+
+        DynamicJsonDocument doc(1024);
+        deserializeJson(doc, response);
+
+        Serial.printf("Finish deserializing JSON for get_building_intro\n");
+        const char *tmp_str = doc["text_intro"];
+        sprintf(cur_building_intro, "%s", tmp_str);
     }
 
     void get_direction()
     {
-        // this function should return direction to show compass, based on cur_no and building locations.
+        // this function should return direction to show compass, based on cur_building_no and building locations.
         return;
     }
 
@@ -311,27 +394,25 @@ public:
         cur_lat = 0;
         cur_lon = 0;
         heading = 0;
-        // should be getting all possible routes from team server, using fake data right now
-        total_route = 3;
-        sprintf(route_name[0], "Infinite");
-        sprintf(route_name[1], "30s");
-        sprintf(route_name[2], "Dorm St.");
+        // should be getting all possible routes from team server in S00-S01 transition, using fake data right now
+        // total_route = 3;
+        // sprintf(route_name[0], "Infinite");
+        // sprintf(route_name[1], "30s");
+        // sprintf(route_name[2], "Dorm St.");
         // initialize route with fake data right now
-        sprintf(building_ids[0], "7");
-        sprintf(building_ids[1], "3");
-        sprintf(building_ids[2], "10");
-        sprintf(building_intros[0], "MIT Building 7, named Rogers Building and home to the iconic Lobby 7, hosts the Department of Architecture and a series of undergraduate-related offices. It also marks the start of the famous Infinite Corridor.");
-        sprintf(building_intros[1], "MIT Building 3, part of the Maclaurin Buildings, hosts the Department of Mechanical Engineering as well as series of graduate-related offices. It is the second 2nd along the Infinite Corridor (from west to east).");
-        sprintf(building_intros[2], "MIT Building 10, part of the Maclaurin Buildings, is the place where the iconic Great Dome resides, as well as being the home to the Barker Engineering Library. It is the 3rd building along the Infinite Corridor (from west to east).");
-        building_lat[0] = 42.359247834274086;
-        building_lat[1] = 0;
-        building_lat[2] = 0;
-        building_lon[0] = -71.09309433468378;
-        building_lon[1] = 0;
-        building_lon[2] = 0;
+        // sprintf(building_ids[0], "7");
+        // sprintf(building_ids[1], "3");
+        // sprintf(building_ids[2], "10");
+        // sprintf(building_intros[0], "MIT Building 7, named Rogers Building and home to the iconic Lobby 7, hosts the Department of Architecture and a series of undergraduate-related offices. It also marks the start of the famous Infinite Corridor.");
+        // sprintf(building_intros[1], "MIT Building 3, part of the Maclaurin Buildings, hosts the Department of Mechanical Engineering as well as series of graduate-related offices. It is the second 2nd along the Infinite Corridor (from west to east).");
+        // sprintf(building_intros[2], "MIT Building 10, part of the Maclaurin Buildings, is the place where the iconic Great Dome resides, as well as being the home to the Barker Engineering Library. It is the 3rd building along the Infinite Corridor (from west to east).");
+        // building_lat[0] = 42.359247834274086;
+        // building_lat[1] = 0;
+        // building_lat[2] = 0;
+        // building_lon[0] = -71.09309433468378;
+        // building_lon[1] = 0;
+        // building_lon[2] = 0;
         route_selection = 0;
-        // should be initializing magnetometer and IMU here
-        // sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: 7",);
     }
     void update(double lat,
                 double lon,
@@ -342,15 +423,15 @@ public:
     {
 
         bool location_changed = false, building_changed = false;
-        int before_check_building_no = cur_no;
+        int before_check_building_no = cur_building_no;
         if (!equal_db(lat, 1000) && !equal_db(lon, 1000))
         {
-            Serial.printf("Chaning lat/lon: %f %f %f %f\n", lat, lon, cur_lat, cur_lon);
+            Serial.printf("Changing lat/lon: %f %f %f %f\n", lat, lon, cur_lat, cur_lon);
             location_changed = true;
             cur_lat = lat;
             cur_lon = lon;
-            get_current_building();
-            building_changed = (cur_no != before_check_building_no);
+            get_current_building_new();
+            building_changed = (cur_building_no != before_check_building_no);
         }
 
         sensors_event_t mag_event;
@@ -368,10 +449,13 @@ public:
 
             // Adjust clock direction
             heading = 360 - heading;
-            // Serial.printf("Offsets: original %f, direction %f\n", heading, direction(cur_lon, cur_lat, building_lon[cur_no + 1], building_lat[cur_no + 1]));
+
+            float dir_offset = direction(cur_lon, cur_lat, building_lon[cur_building_no + 1], building_lat[cur_building_no + 1]);
+
+            Serial.printf("Offsets: original %f, direction %f, total %f\n", heading, dir_offset, heading + dir_offset + 180);
 
             // Add direction offset
-            heading = heading + direction(cur_lon, cur_lat, building_lon[cur_no + 1], building_lat[cur_no + 1]) + 180;
+            heading = heading + dir_offset + 270;
             while (heading >= 360)
                 heading = heading - 360;
         }
@@ -379,6 +463,10 @@ public:
         switch (state)
         {
         case S0:
+            /*
+            S0 = Welcome state, user can press any button to access list of routes
+            Will trigger get_route_list and corresponding API call to the team server, will go to S01 after that
+            */
             if (old_state != state)
             {
                 tft.fillScreen(TFT_BLACK);
@@ -391,10 +479,15 @@ public:
                 state = S01;
                 route_selection = 0;
                 old_selection = 0;
+                get_route_list();
             }
             break;
 
         case S01:
+            /*
+            S01 = Route selection state, user can use button 2/3 to slide and button 1 to selection
+            Will trigger going to S02, which will trigger get_route_info on selected route and corresponding API call to the team server
+            */
             if (old_state != state || old_selection != route_selection)
             {
                 tft.fillScreen(TFT_BLACK);
@@ -420,6 +513,11 @@ public:
             break;
 
         case S02:
+            /*
+            S02 = state for getting route info
+            Only used as transitional state to call server
+            Will goto S03 after get_route_info returns
+            */
             if (old_state != state)
             {
                 tft.fillScreen(TFT_BLACK);
@@ -427,15 +525,18 @@ public:
                 tft.printf("Selected Route %d! Downloading Route Info ...", route_selection);
                 sleep(1); // TO BE DEPRECATED: Dangerous!
                 get_route_info();
-                cur_no = -1;
-                sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[0]);
+                cur_building_no = -1;
                 old_state = state;
                 state = S03;
             }
             break;
 
         case S03:
-
+            /*
+            S03: Direction to start state
+            Will Show Compass telling me to get to the starting building
+            Will goto S11 when user reaches first building
+            */
             if (old_state != state || location_changed)
             {
                 // should be printing compass here, printing foo direction instead
@@ -448,14 +549,13 @@ public:
 
             plotNeedle(heading, 10);
 
-            if (cur_no == 0)
+            if (cur_building_no == 0)
             {
                 Serial.println("S03 reached starting point!");
                 tft.fillScreen(TFT_BLACK);
                 tft.setCursor(0, 0);
                 tft.printf("Reached starting point!, Trip starting in 5 seconds......");
-                sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[cur_no + 1]);
-                // get_building_intro();
+                get_building_intro();
                 sleep(5); // TO BE DEPRECATED
                 old_state = state;
                 state = S11;
@@ -472,8 +572,7 @@ public:
                 tft.fillScreen(TFT_BLACK);
                 tft.setCursor(0, 0);
                 tft.printf("Reached new point!");
-                sprintf(foo_direction, "Just go straight in the Infinite Corridor heading east! Next building is: %s", building_ids[cur_no + 1]);
-                // get_building_intro();
+                get_building_intro();
                 sleep(5); // TO BE DEPRECATED
                 old_state = state;
                 state = S11;
@@ -481,13 +580,14 @@ public:
             break;
 
         case S11:
-            if (old_state != state)
+            if (old_state != state) // Need to add "coming back from no internet" condition
             {
                 tft.fillScreen(TFT_BLACK);
                 tft.setTextColor(TFT_GREEN, TFT_BLACK);
                 tft.setTextDatum(TL_DATUM);
                 tft.setCursor(0, 0);
-                tft.printf("%s", cur_intro);
+                tft.printf("%s", cur_building_intro);
+                Serial.println(cur_building_intro);
             }
             if (building_changed)
             {
@@ -514,6 +614,9 @@ public:
                 tft.setTextDatum(MC_DATUM);
                 tft.drawString("N", SCREEN_CENTRE_X, SCREEN_CENTRE_Y, 4);
             }
+            tft.setTextColor(TFT_RED, TFT_BLACK);
+            tft.setTextDatum(MC_DATUM);
+            tft.drawString("N", SCREEN_CENTRE_X, SCREEN_CENTRE_Y, 4);
             plotNeedle(heading, 10);
             if (building_changed)
             {
@@ -626,7 +729,7 @@ void setup()
     }
     else
     { // if we failed to connect just Try again.
-        Serial.println("Failed to Connect :/  Going to restart");
+        Serial.println("Failed to Connect in the first time:/  Going to restart");
         Serial.println(WiFi.status());
         ESP.restart(); // restart the ESP (proper way)
     }
@@ -644,11 +747,45 @@ void setup()
     setup_compass();
 
     primary_timer = millis();
-    location_timer = millis();
+    location_timer = 0;
 }
 
 void loop()
 {
+
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        Serial.println("Reconnecting to WiFi...");
+        tft.fillScreen(TFT_BLACK);
+        tft.setCursor(0, 0);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.println("Lost Internet Connection, Trying to Reconnect, Cannot Operate While Reconnecting......");
+        WiFi.disconnect();
+        WiFi.reconnect();
+        int count = 0;
+        while (WiFi.status() != WL_CONNECTED && count < 12)
+        {
+            delay(500);
+            Serial.print(".");
+            count++;
+        }
+        delay(2000);
+        if (WiFi.isConnected())
+        { // if we connected then print our IP, Mac, and SSID we're on
+            Serial.println("CONNECTED!");
+            Serial.printf("%d:%d:%d:%d (%s) (%s)\n", WiFi.localIP()[3], WiFi.localIP()[2],
+                          WiFi.localIP()[1], WiFi.localIP()[0],
+                          WiFi.macAddress().c_str(), WiFi.SSID().c_str());
+            delay(500);
+            tft.fillScreen(TFT_BLACK);
+        }
+        else
+        { // if we failed to connect just Try again.
+            Serial.println("Failed to Connect :/  Going to retry");
+            Serial.println(WiFi.status());
+            return;
+        }
+    }
 
     int bv1 = button1.update(); // get button1 value
     int bv2 = button2.update(); // get button2 value
@@ -656,7 +793,7 @@ void loop()
     int bv4 = button4.update(); // get button4 value
 
     double lat = 1000, lon = 1000;
-    if (millis() - location_timer > LOCATION_PERIOD)
+    if (location_timer == 0 || millis() - location_timer > LOCATION_PERIOD)
     {
         get_location(&lat, &lon);
         location_timer = millis();
