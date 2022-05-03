@@ -1,5 +1,6 @@
 import requests
 import sqlite3
+import json
 from datetime import datetime
 
 step_db = '/var/jail/home/team42/608_team42_final/step_data.db'
@@ -21,8 +22,8 @@ def request_handler(request):
             # all user all time
             if view == 1: 
                 with sqlite3.connect(step_db) as c:
-                    table = c.execute('''SELECT * FROM step_table;''').fetchall()
-                return table
+                    table = c.execute('''SELECT * FROM step_table ORDER BY step DESC;''').fetchall()
+                return json.dumps(table)
             
             # all user one day
             if view == 2: 

@@ -109,6 +109,42 @@ def create_location_section():
     return str_header + str_2 + card_str + str_end
 
 
+def get_all_stepcounts():
+    url = "https://608dev-2.net/sandbox/sc/team42/608_team42_final/create_step_db.py?view=1"
+    r = requests.get(url)
+    response = r.json()
+    return response
+
+
+print(get_all_stepcounts())
+
+
+def ulify(elements):
+    string = ""
+    # string += "user\tscore\tcorrect number\twrong number\n"
+    string += "<ol>\n"
+    for x in elements:
+        string += "<li>" + "User: "+str(x[0]) + ", Score:"+str(x[1])+", Date:" + \
+            str(x[2]) + "</li>\n"
+    string += "</ol>"
+    return string
+
+
+def create_leaderboard():
+    str_header = "<section id=\"steps\"><div class=\"container-fluid\"><div class=\"row\"><div class=\"col-lg-6 steps-text\"><h3>Historical Stepcount Leaderboard</h3>"
+
+    # fill in cards
+    str_end = "</div></div></div></section>"
+
+    # call all step counts
+    elements = get_all_stepcounts()
+    content = ulify(elements)
+    # create leaderboard
+
+    # append into the code
+    return str_header + content + str_end
+
+
 def request_handler(request):
     '''
     this reads html code
@@ -121,7 +157,8 @@ def request_handler(request):
     s2 = file2.read()
     users = create_user_section()
     locations = create_location_section()
-    return s1+users+locations+s2
+    steps = create_leaderboard()
+    return s1+users+locations+steps+s2
 
 
 # print(create_user_section())

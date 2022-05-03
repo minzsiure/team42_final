@@ -34,8 +34,4 @@ def request_handler(request):
                 """CREATE TABLE IF NOT EXISTS route_table (route_name text, route_id integer, route_building_names text, route_building_id text, route_center_coordinates text);""")
             routes = c.execute(
                 '''SELECT DISTINCT * FROM route_table;''').fetchall()
-            all_names = [routes[i][0]
-                         for i in range(len(routes))]
-            all_building_names = [eval(routes[i][2])
-                                  for i in range(len(routes))]
             return routes
