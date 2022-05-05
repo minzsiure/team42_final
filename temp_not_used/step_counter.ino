@@ -7,19 +7,21 @@
 
 TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
 
-char network[] = "MIT";
-char password[] = "";
+// char network[] = "MIT";
+// char password[] = "";
+const char network[] = "TackyManchego";
+const char password[] = "BannedRomeo6678";
 
 uint8_t channel = 1; //network channel on 2.4 GHz
 byte bssid[] = {0x04, 0x95, 0xE6, 0xAE, 0xDB, 0x41}; //6 byte MAC address of AP you're targeting.
 
 const uint8_t LOOP_PERIOD = 10; //milliseconds
-int WAITING_PERIOD = 5000; //milliseconds
+int WAITING_PERIOD = 3000; //milliseconds
 uint32_t primary_timer = 0;
 uint32_t posting_timer = 0;
 uint32_t step_timer = 0;
 float x, y, z; //variables for grabbing x,y,and z values
-const char USER[] = "The Hungry Beaver";
+const char USER[] = "Week 4 Deliverable";
 
 const float ZOOM = 9.81; //for display (converts readings into m/s^2)...used for visualizing only
 
@@ -160,10 +162,7 @@ void loop() {
 
   step_reporter_fsm(avg_acc_mag); //run step_reporter_fsm (from lab02a)
   // post_reporter_fsm(button1); //run post_reporter_fsm (written here)
-
-  Serial.printf("%d %d\n", millis() - posting_timer, millis() - posting_timer > WAITING_PERIOD);
   if (new_step && millis() - posting_timer > WAITING_PERIOD) { // when there are new steps and past the waiting period
-    Serial.println("hello?");
     char body[100]; //for body
     sprintf(body,"username=%s&step=%d",USER,steps);//generate body, posting to User, 1 step
     int body_len = strlen(body); //calculate body length (for header reporting)
