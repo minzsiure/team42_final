@@ -115,6 +115,30 @@ def get_all_stepcounts():
     response = r.json()
     return response
 
+def get_steps_as_table():
+    url = "https://608dev-2.net/sandbox/sc/team42/608_team42_final/create_step_db.py?view=1"
+    r = requests.get(url)
+    response = r.json()
+    
+    table = "<table>\n"
+
+    # Create the table's column headers
+    header = ['User', 'Steps', 'Date']
+    table += "  <tr>\n"
+    for column in header:
+        table += "    <th>{0}</th>\n".format(str(column).strip())
+    table += "  </tr>\n"
+
+    # Create the table's row data
+    for line in response:
+        table += "  <tr>\n"
+        for column in line:
+            table += "    <td>  {0}  </td>\n".format(str(column).strip())
+        table += "  </tr>\n"
+
+    table += "</table>"
+    return table
+
 
 print(get_all_stepcounts())
 
@@ -137,8 +161,10 @@ def create_leaderboard():
     str_end = "</div></div></div></section>"
 
     # call all step counts
-    elements = get_all_stepcounts()
-    content = ulify(elements)
+    content = get_steps_as_table()
+    
+    # elements = get_all_stepcounts()
+    # content = ulify(elements)
     # create leaderboard
 
     # append into the code
