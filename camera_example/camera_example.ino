@@ -199,14 +199,6 @@ void setup() {
     Serial.println(F("SPI1 interface Error!"));
     while (1);
   }
-
-  //Check if the ArduCAM SPI bus is OK
-  myCAM.write_reg(ARDUCHIP_TEST1, 0x55);
-  temp = myCAM.read_reg(ARDUCHIP_TEST1);
-  if (temp != 0x55) {
-    Serial.println(F("SPI1 interface Error!"));
-    while (1);
-  }
   
   //Check if the camera module type is OV2640
   myCAM.wrSensorReg8_8(0xff, 0x01);
