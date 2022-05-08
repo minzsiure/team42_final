@@ -108,7 +108,7 @@ void camCapture(ArduCAM myCAM) {
   base64_encode(image_data, holder, i);
   memset(body, 0, sizeof(body));
 
-  sprintf(body,"{\"location\":\'Test\', \"user_id\":0, \"image_encoding\":\'%s\'}", image_data);
+  sprintf(body,"{\"location\":\'New Vassar\', \"user_id\":\'Yan Wu\', \"image_encoding\":\'%s\'}", image_data);
   memset(request_buffer, 0, IN_BUFFER_SIZE);
   memset(response_buffer, 0, OUT_BUFFER_SIZE);
   request_buffer[0] = '\0'; //set 0th byte to null

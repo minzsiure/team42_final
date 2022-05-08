@@ -10,9 +10,8 @@
 #include <Adafruit_LSM303DLH_Mag.h>
 #include <Adafruit_LSM303_Accel.h>
 #include <Adafruit_Sensor.h>
-//#include <ESP32WebServer.h>
-//#include <ArduCAM.h>
-//#include "memorysaver.h"
+#include <ArduCAM.h>
+#include "memorysaver.h"
 #include <Wire.h>
 
 #define NEEDLE_LENGTH 40         // Visible length
@@ -66,6 +65,35 @@ WiFiClient client2;      // global WiFiClient Secure object
 
 Adafruit_LSM303DLH_Mag_Unified mag = Adafruit_LSM303DLH_Mag_Unified(12345);
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
+
+//ArduCam parameters
+const int CS = 34;
+const int CAM_POWER_ON = 10;
+const int KEY = 45;
+WiFiClientSecure client; //global WiFiClient Secure object
+
+ArduCAM myCAM(OV2640, CS);
+
+static const size_t bufferSize = 8000;
+static uint8_t buffer[bufferSize] = {0xFF};
+uint8_t temp = 0, temp_last = 0;
+int i = 0;
+bool is_header = false;
+
+int ind=0;
+int temp_1 = buffer[ind];
+int temp_last_1;
+char holder[bufferSize];
+char image_data[8000];
+char body[6000];
+
+const uint16_t RESPONSE_TIMEOUT = 6000;
+const uint16_t CAM_IN_BUFFER_SIZE = 8000; //size of buffer to hold HTTP request
+const uint16_t CAM_OUT_BUFFER_SIZE = 8000; //size of buffer to hold HTTP response
+char request_buffer[CAM_IN_BUFFER_SIZE];
+char response_buffer[CAM_OUT_BUFFER_SIZE]; //char array buffer to hold HTTP request
+char body[CAM_IN_BUFFER_SIZE];
+
 
 inline int sign_db(double x)
 {
@@ -638,7 +666,7 @@ public:
         case S131:
             if (old_state != state)
             {
-                server.handleClient();
+                serverCapture();
             }
             
             break;
@@ -743,6 +771,8 @@ void setup()
     //     Serial.println("Restarting");
     //     ESP.restart(); // restart the ESP (proper way)
     // }
+
+    setup_camera();
 
     setup_compass();
 
