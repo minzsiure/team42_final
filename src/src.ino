@@ -38,6 +38,7 @@ const int BUTTON_PIN_4 = 34;
 
 const int LOOP_PERIOD = 200;
 const int LOCATION_PERIOD = 30000;
+int WAITING_PERIOD = 3000; // milliseconds
 
 const float Pi = 3.1415926;
 
@@ -45,7 +46,6 @@ MPU6050 imu; // imu object called, appropriately, imu
 
 char network[] = "MIT"; // SSID for 6.08 Lab
 char password[] = "";   // Password for 6.08 Lab
-
 char TEAM_SERVER[] = "608dev-2.net"; // host for team server HTTP calls
 
 // Some constants and some resources:
@@ -59,6 +59,16 @@ char json_body[JSON_BODY_SIZE];
 
 uint32_t primary_timer;
 uint32_t location_timer;
+uint32_t posting_timer = 0;
+float x, y, z;
+int steps = 0;
+const float peak = 9.5;
+const float trough = 8.5;
+bool new_step = false;
+const int REST = 0;
+const int WALK_UP = 1;
+const int WALK_DOWN = 2;
+uint8_t step_state = REST;
 
 WiFiClientSecure client; // global WiFiClient Secure object
 WiFiClient client2;      // global WiFiClient Secure object
@@ -93,12 +103,15 @@ char holder[bufferSize];
 char image_data[8000];
 char body[6000];
 char user[] = "team_42";
+const float ZOOM = 9.81;
 
 const uint16_t CAM_IN_BUFFER_SIZE = 8000; //size of buffer to hold HTTP request
 const uint16_t CAM_OUT_BUFFER_SIZE = 8000; //size of buffer to hold HTTP response
 char request_buffer[CAM_IN_BUFFER_SIZE];
 char response_buffer[CAM_OUT_BUFFER_SIZE]; //char array buffer to hold HTTP request
 
+char step_request_buffer[1000];   // char array buffer to hold HTTP request
+char step_response_buffer[1000]; // char array buffer to hold HTTP response
 
 inline int sign_db(double x)
 {
@@ -984,8 +997,74 @@ void loop()
 
     pb.update(lat, lon, bv1, bv2, bv3, bv4);
 
-    while (millis() - primary_timer < LOOP_PERIOD)
-        ;
+    // --------------- step counter --------------------
+    // get IMU information:
+    imu.readAccelData(imu.accelCount);
+    float x, y, z;
+    x = ZOOM * imu.accelCount[0] * imu.aRes;
+    y = ZOOM * imu.accelCount[1] * imu.aRes;
+    z = ZOOM * imu.accelCount[2] * imu.aRes;
+    float acc_mag = sqrt(x * x + y * y + z * z);
+    float avg_acc_mag = 1.0 / 3.0 * (acc_mag + old_acc_mag + older_acc_mag);
+    older_acc_mag = old_acc_mag;
+    old_acc_mag = acc_mag;
 
+    //todo: add print to screen code
+    step_reporter_fsm(avg_acc_mag); // run step_reporter_fsm (from lab02a)
+    if (new_step && millis() - posting_timer > WAITING_PERIOD)
+    {                                                      // when there are new steps and past the waiting period
+        char body[100];                                    // for body
+        sprintf(body, "username=%s&step=%d", user, steps); // generate body, posting to User, 1 step
+        int body_len = strlen(body);                       // calculate body length (for header reporting)
+        sprintf(step_request_buffer, "POST http://608dev-2.net/sandbox/sc/team42/608_team42_final/create_step_db.py HTTP/1.1\r\n");
+        strcat(step_request_buffer, "Host: 608dev-2.net\r\n");
+        strcat(step_request_buffer, "Content-Type: application/x-www-form-urlencoded\r\n");
+        sprintf(step_request_buffer + strlen(step_request_buffer), "Content-Length: %d\r\n", body_len); // append string formatted to end of request buffer
+        strcat(step_request_buffer, "\r\n");                                                       // new line from header to body
+        strcat(step_request_buffer, body);                                                         // body
+        strcat(step_request_buffer, "\r\n");                                                       // new line
+        do_http_request("608dev-2.net", step_request_buffer, step_response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, true);
+        tft.fillScreen(TFT_BLACK); // black out TFT Screen
+        steps = 0;
+        new_step = false;
+    }
+    // -------------------------------------------------
+
+    while (millis() - primary_timer < LOOP_PERIOD);
     primary_timer = millis();
+}
+
+void step_reporter_fsm(float avg_acc_mag)
+{
+    switch (step_state)
+    {
+    case REST:
+        if (avg_acc_mag >= peak)
+        {
+            step_state = WALK_UP;
+        }
+        break;
+
+    case WALK_UP:
+        if (avg_acc_mag <= trough)
+        {
+            step_state = WALK_DOWN;
+            step_fsm_timer = millis();
+        }
+        break;
+
+    case WALK_DOWN:
+        if (millis() - step_fsm_timer > 5000)
+        {
+            step_state = REST;
+        }
+        else if (avg_acc_mag >= peak && millis() - step_fsm_timer > 200)
+        {
+            step_state = WALK_UP;
+            steps++;
+            new_step = true;
+            posting_timer = millis();
+        }
+        break;
+    }
 }
