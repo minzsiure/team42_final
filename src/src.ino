@@ -14,6 +14,7 @@
 //#include <ArduCAM.h>
 //#include "memorysaver.h"
 #include <Wire.h>
+#include <DFRobotDFPlayerMini.h>
 
 #define NEEDLE_LENGTH 40         // Visible length
 #define NEEDLE_WIDTH 5           // Width of needle - make it an odd number
@@ -24,6 +25,8 @@
 #define SCREEN_CENTRE_Y 80
 
 // TFT-related definitions
+
+char fake_photo_base64[] = "/9j/4AAQSkZJRgABAQEAAAAAAAD/2wBDAAwICQsJCAwLCgsODQwOEh4UEhEREiUaHBYeLCYuLSsmKikwNkU7MDNBNCkqPFI9QUdKTU5NLzpVW1RLWkVMTUr/2wBDAQ0ODhIQEiMUFCNKMioySkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkr/xAAfAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgv/xAC1EAACAQMDAgQDBQUEBAAAAX0BAgMABBEFEiExQQYTUWEHInEUMoGRoQgjQrHBFVLR8CQzYnKCCQoWFxgZGiUmJygpKjQ1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4eLj5OXm5%2Bjp6vHy8/T19vf4%2Bfr/xAAfAQADAQEBAQEBAQEBAAAAAAAAAQIDBAUGBwgJCgv/xAC1EQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4%2BTl5ufo6ery8/T19vf4%2Bfr/wAARCAB4AKADASEAAhEBAxEB/9oADAMBAAIRAxEAPwDKtrH5izDJNX0sIW6xitDK5MumW/8AcpWsIMf6taVh8zMOe2RWnG0cNmuf1S38uTI70mCKIqSXmGpKFtfu1YiOJ6AOosoLeW2FxFK0V0vbHBrbsL5opPs9117GmSbHFIcUhXI2dfUVBLcxRruZwB60CuZ1zrNmEO24Gaof8JBbRtlpWk9sVoqcguWbXUxfgeTGdpbac1rmA4%2B7USVgRlJzyBUodlqxi%2Be1NMpNIZmTYa5cH%2BNaxtTUPbf7S0gMTZkZqNz8lSWLE1SxvzQB23hIrcRMp9a6e%2BsI5bYs/VBxTMxdItGmRPNztf7prfj0GPHzAUgHjQ4/9mq%2BpeF4dQtGt2k2A91pxdncLMyE%2BGmmD7007fjTv%2BFdaaDwuR/tMa3%2BsyJ9mJceHbbS7yyhtl2pK3NdR/Zdv6VjJ31Gonn6xhErC1nUZLe6jjicYP3gOtDLRae/jWAyE44pNLuZruHfLGF9KB20C9TY6Se9ZepJtWT0YUEnORdxUL9KksRKEPNAHa%2BBM7pnP3RwK6fVr0xWJXPzPwKCDpvDQC6eitW7QOIUUFiblHUionu7dPvTIPxpE3Od1/V7QX1i6zoRE2TzWxDrNpcxl7eTzVHdaZNzz6ebceKzW02GS7W4/jFWMs3VotxbtF93d3osLMWUHlKxYe9IL9Av0zbPWXf4bTNx9KQjmY12kNUDDMW6kWRDpTVoA7jwe6xae7H%2B/WjE/wDaeomQn9zD933NBJ3Xh9vk2UzxZJf2lol1YN/qj830oJ6nDTeLteYkeeFqpJr%2Bty/evmH0qLmvsynLe6hJ9%2B%2Bk/Oqkjyt9%2B5kP40XHyFOd1jGSzH8a6XwcwaxlZe796ZMkKt9byfdmX86txOCMgitSSYGnCkIjuRmMisO8O6x8s%2BtIDCv/AN2iAelU5FxbJ70iysaBQB0uiM8lr9mj/jbk12FhbrbqFFIk6LS5NhremMU1q8b8q60EniHiM3en6rNb4IAPy8dqyTc3jf3vyqbG3MxpN439%2BmGO5PXNPQWpA6up%2BavR/DWntYaWgf8A1knzNTJZ57ChllVB1aupi02eHS5IhJ85Oc1Vi2znxd3MZ4mf866Gwub63sp57pjjb8maRTsZ48R3Q/1u1xVi0vbe5XdLIFwfumgiUexnapIl3e4iPyKKq6jhFjQdhQSZ7UCgZ2/hKIfYzIR0aumhpEmrZHBrdtHQjaefegk5f4l6MZNOGo2w/eQff91rgLXw5rV/AlxCV8qQZX56LFKVkSnwZrOPmkX8CTT4vAl/K21rtFOM96Wg%2BYz5PDs9ldxib5k3jDetehkPs4joJueYaNHv1GKuyum22cp/2avoaPc4WIb5VHqa9AazjnsxDL92kEzCfRYIpzKv%2BqHY1zsu3exQYXNA4slls2jtEnwfmqgxJNAug1qVBzQI7nw58unoPU5rooaRJfgPNblrKrKPX2oEaO1by2eGZPlYYINZ2l6X/Z1hFajpFwPpUsRK8NZrx/6eR/0zqRnMa%2Bnywe0h/nW9sGwc1Qjyrw0m68LegrodVfZp0x9q06Gv2jldMi86%2BiX/AGq78DIxSCZm6%2B4ttPf1fiuNtIvPuo4%2BxNIPsnRas629l5dct5fVqBELdaltk3PTA7jRI/Lt4x6jNbsdIktRse1a1mQQMnaaBGvC2Oh3Gs7xdNqtvYLPpPzuD8yYzSewkcJd33i%2B8TBhnQe2BS6LZ66%2Bor/an2hbbBz84rL3TW9loVb6K9iuZ/P3eRu/c7mzWTdrr0MvyrMw7bGzVq1hX1KllZX9tOu1SoJ5q5rBvZXMKIxi%2Blaj0uHh/TLlLxZXQoo9a63oKQpbnF63c3s8hSZGCK3HFVNIlit7zfNSLa0L2pLJezAYwOwrPvk8o7fSggzGFauh2/nS0wO0ii8qSJf9itBKRJOprRtNp60gNKG58s4IJrSRlniKY60COcurUQyFC0nH%2B2aqSQxn%2B8f%2BBVz2NzE16JI40KjvVbVfL2RxhimRnitUQ92NUirC10Eko4qRTUiElgEykECs%2Bbw7asAyriQHNIaYr2giDSP1xXOSWkl5KxC8VIzHuYtku2uq8LWW1A7DrVAzoLoYeNvTiplNIkmzVu0fnFAzWXOKt20pDYbigkzPGFpeNZ/arGby3TqMZzXm82vXwnWMakp/vHy%2BlZ2VzRPQhn1aRiVubxZl7YWoLe%2BmvLmXfMGWMfJmqILS3M3XKipftcuN3m1qWWrfUskCQfjWrGcjNBLJ0qbbxUsRVuY9ymq7QiO3OBUlGHFohuJvNlGBnpXR2sCwrhegqhCXfzJRG%2BVqQLAapI5Nppgb1mVuY/l4NWfsq95QKCSyiK8ZieUMCK8z1jwa6X8nk7NrNnnNIaZnXfhR0X5BvrKawu9NupDNY/u26FhkCgdzRhsgB8559qlNkrDhiK1HcYkQQbT%2Bla1hL8vlN1WkM0Uq2P8AV1LJKh5pmN1IY9VxQzUCIJDmo4jjikUWVNTJTJL1tOVPXitRJFxneooEP/tS1jH7yRaxvFrw6npbNY3O25j5XHelcLM8pOt33eeT86P7dv8AH/Hw9MdjUF8Wt%2BPlcetS292TZ/Ock1RVi5byRfZoynDjtVhBILmJ26t1xTEa6VaB4qRELpzUO7b2pDG%2BaackU0v3I2NADXt516xN%2BVQKjCXlTUjLC8CoLjVIrfgfM3tVBFXZVXUL28fZbrj6VtWGizvh7qQn2rM2ska39nqFxgVz3iGKSxtmeBM0hM87a3kVsSrgmpJoV%2BzA4%2BatDI0fsnA7Zo8to16nnhRVDNSytWW3Lyj5iOKusG3QKOopiNJW29asWyvO2EFIk3rTTkjGZOTU8trbOMGMVJqojINPtE/5ZiriiNBhEAqSrEUsn%2ByKrSCF/vxqaQ7FeSysZVIKYzWe3hvTSeMj8aYbGhaWVpZJiJQKsGdRSAha6FUr0pcRMjd6QjzrW08q6VD2zVVyqJGW6VfQy6mntjj%2BYtmrFr5G3zd29vetALC3hjVuAfSp7OR0Tc/32oBlq3DXEu0V1Vhbrbx8daTHBE8s%2BBUKy5NZmxOrU7zcUARTSis2e6xSApve%2B9It/wC9AC/bvemm896AIHu/emG8pCOV8WviaGYc9qzpl32qcgVa2MZbn//Z";
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite needle = TFT_eSprite(&tft); // Sprite object for needle
@@ -44,16 +47,17 @@ const float Pi = 3.1415926;
 
 MPU6050 imu; // imu object called, appropriately, imu
 
-char network[] = "EECS_Labs"; // SSID for 6.08 Lab
-char password[] = "";   // Password for 6.08 Lab
+char network[] = "MIT"; // SSID for 6.08 Lab
+char password[] = "";         // Password for 6.08 Lab
 
 char TEAM_SERVER[] = "608dev-2.net"; // host for team server HTTP calls
 
 // Some constants and some resources:
 const uint16_t RESPONSE_TIMEOUT = 6000; // time for claiming the HTTP response as TIMEOUT
-const uint16_t IN_BUFFER_SIZE = 3500;   // size of buffer to hold HTTP request
-const uint16_t OUT_BUFFER_SIZE = 1000;  // size of buffer to hold HTTP response
-const uint16_t JSON_BODY_SIZE = 3000;   // size of buffer to hold JSON body
+const uint16_t IN_BUFFER_SIZE = 4500;   // size of buffer to hold HTTP request
+const uint16_t OUT_BUFFER_SIZE = 4500;  // size of buffer to hold HTTP response
+const uint16_t JSON_BODY_SIZE = 1000;   // size of buffer to hold JSON body
+char body[IN_BUFFER_SIZE];
 char request[IN_BUFFER_SIZE];
 char response[OUT_BUFFER_SIZE]; // char array buffer to hold HTTP request
 char json_body[JSON_BODY_SIZE];
@@ -66,6 +70,10 @@ WiFiClient client2;      // global WiFiClient Secure object
 
 Adafruit_LSM303DLH_Mag_Unified mag = Adafruit_LSM303DLH_Mag_Unified(12345);
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
+
+HardwareSerial mySoftwareSerial(1);
+DFRobotDFPlayerMini myDFPlayer;
+void printDetail(uint8_t type, int value);
 
 inline int sign_db(double x)
 {
@@ -119,7 +127,7 @@ public:
         S2_start_time = millis();      // init
         button_change_time = millis(); // init
         debounce_duration = 10;
-        long_press_duration = 1000;
+        long_press_duration = 2000;
         button_pressed = 0;
     }
     void read()
@@ -379,11 +387,25 @@ private:
         const char *tmp_str = doc["text_intro"];
         sprintf(cur_building_intro, "%s", tmp_str);
     }
+    
+    void upload_photo(){
 
-    void get_direction()
-    {
-        // this function should return direction to show compass, based on cur_building_no and building locations.
-        return;
+        sprintf(body, "location=%s&user_id=orion&image_encoding=%s", cur_building_id, fake_photo_base64);
+
+        int req_len = 0;
+        req_len += sprintf(request + req_len, "POST http://608dev-2.net/sandbox/sc/team42/608_team42_final/image_request.py HTTP/1.1\r\n");
+        req_len += sprintf(request + req_len, "Host: 608dev-2.net\r\n");
+        req_len += sprintf(request + req_len, "Content-Type: application/x-www-form-urlencoded\r\n");
+        // req_len += sprintf(request + req_len, "Connection: keep-alive\r\n");
+        req_len += sprintf(request + req_len, "Content-Length: %d\r\n\r\n", strlen(body));
+        req_len += sprintf(request + req_len, "%s\r\n", body);
+
+        Serial.println("finishing prepping upload photo");
+
+        do_http_request(TEAM_SERVER, request, response, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, true);
+
+        Serial.println("finished photo uploading");
+
     }
 
 public:
@@ -596,15 +618,33 @@ public:
             }
             else
             {
-                if (button3 == 1 || button2 == 1)
+                if (button2 == 1)
                 {
                     old_state = state;
                     state = S12;
+                }
+                else if (button3 == 1)
+                {
+                    old_state = state;
+                    state = S13;
+                }
+                else if (button1 == 2){
+                    old_state = state;
+                    state = S111;
                 }
                 else
                     old_state = state;
             }
             break;
+
+        case S111:
+            if (old_state != state){
+                Serial.printf("Entering S111 %d, playing......\n", cur_building_no+1);
+                myDFPlayer.play(cur_building_no+1);
+                delay(32000);
+                old_state = state;
+                state = S11;
+            }
 
         case S12:
             if (old_state != state)
@@ -625,23 +665,60 @@ public:
             }
             else
             {
-                if (button3 == 1 || button2 == 1)
+                if (button3 == 1)
                 {
                     old_state = state;
                     state = S11;
+                }
+                else if (button2 == 1)
+                {
+                    old_state = state;
+                    state = S13;
                 }
                 else
                     old_state = state;
             }
             break;
 
-        case S131:
+        case S13:
             if (old_state != state)
             {
-                server.handleClient();
+                tft.fillScreen(TFT_BLACK);
+                tft.setTextColor(TFT_GREEN, TFT_BLACK);
+                tft.setTextDatum(TL_DATUM);
+                tft.setCursor(0, 0);
+                tft.printf("uploading photo......");
+                upload_photo();
             }
-            
+            if (building_changed)
+            {
+                old_state = state;
+                state = S10;
+            }
+            else
+            {
+                if (button2 == 1)
+                {
+                    old_state = state;
+                    state = S11;
+                }
+                else if (button3 == 1)
+                {
+                    old_state = state;
+                    state = S12;
+                }
+                else
+                    old_state = state;
+            }
             break;
+
+            // case S131:
+            //     if (old_state != state)
+            //     {
+            //         server.handleClient();
+            //     }
+
+            //     break;
 
         default:
             tft.fillScreen(TFT_BLACK);
@@ -745,6 +822,10 @@ void setup()
     // }
 
     setup_compass();
+
+    delay(1000);
+
+    mp3_setup();
 
     primary_timer = millis();
     location_timer = 0;
