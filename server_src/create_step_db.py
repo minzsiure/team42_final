@@ -1,7 +1,7 @@
 import requests
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 step_db = '/var/jail/home/team42/608_team42_final/step_data.db'
 
@@ -56,14 +56,14 @@ def request_handler(request):
         create_route_data()
         username = request['form']['username']
         step = int(request['form']['step'])
-        date_now = str(datetime.now().date())
+        date_now = str(datetime.now(timezone(timedelta(hours=-4), 'EST')).date())
         with sqlite3.connect(step_db) as c:
             matched_users = c.execute(
                 '''SELECT * FROM step_table WHERE username = ?;''', (username,)).fetchall()
             #add new row
             if len(matched_users) == 0 or date_now not in [i[2] for i in matched_users]:
                 c.execute(
-                    '''INSERT into step_table VALUES (?,?,?);''', (username, step, datetime.now().date()))
+                    '''INSERT into step_table VALUES (?,?,?);''', (username, step, datetime.now(timezone(timedelta(hours=-4), 'EST')).date()))
                 return f'{username}: {step}'
             #update existing row
             else: 

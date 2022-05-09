@@ -7,6 +7,16 @@ h3 {
   font-family: "Alata", sans-serif;
 }
 
+table {
+  /* padding-top: 10px; */
+  border-collapse: separate;
+  border-spacing: 30px 0;
+}
+
+tr {
+  padding: 10px 0;
+}
+
 #title {
   background-color: #3bc7ff;
   padding: 2% 10% 4%;
