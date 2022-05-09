@@ -31,9 +31,6 @@ uint8_t temp = 0, temp_last = 0;
 int i = 0;
 bool is_header = false;
 
-int ind=0;
-int temp_1 = buffer[ind];
-int temp_last_1;
 char holder[bufferSize];
 char image_data[8000];
 char body[6000];
@@ -48,8 +45,6 @@ char json_body[IN_BUFFER_SIZE];
 
 char network[] = "MIT";  //SSID for 6.08 Lab
 char password[] = ""; //Password for 6.08 Lab
-
-//ESP32WebServer server(80);
 
 void start_capture() {
   myCAM.clear_fifo_flag();
@@ -72,12 +67,17 @@ void camCapture(ArduCAM myCAM) {
   i = 0;
   while ( len-- )
   {
+    Serial.println("Index:");
+    Serial.println(i);
+    Serial.println("Value:");
+    Serial.println(temp);
     temp_last = temp;
     temp =  SPI.transfer(0x00);
     //Read JPEG data from FIFO
     if ( (temp == 0xD9) && (temp_last == 0xFF) ) //If find the end ,break while,
     {
       buffer[i++] = temp;  //save the last  0XD9
+      Serial.println("Last");
       //Write the remain bytes in the buffer
       is_header = false;
       myCAM.CS_HIGH();
@@ -88,12 +88,14 @@ void camCapture(ArduCAM myCAM) {
       //Write image data to buffer if not full
       if (i < bufferSize){
         buffer[i++] = temp;
+        Serial.println(i);
       }
       else
       {
         //Write bufferSize bytes image data to file
         i = 0;
         buffer[i++] = temp;
+        Serial.println("Reset");
       }
     }
     else if ((temp == 0xD8) & (temp_last == 0xFF))
@@ -101,6 +103,7 @@ void camCapture(ArduCAM myCAM) {
       is_header = true;
       buffer[i++] = temp_last;
       buffer[i++] = temp;
+      Serial.println(temp_last);
     }
   }
   memcpy(holder, buffer, sizeof(buffer));
@@ -200,14 +203,6 @@ void setup() {
     while (1);
   }
 
-  //Check if the ArduCAM SPI bus is OK
-  myCAM.write_reg(ARDUCHIP_TEST1, 0x55);
-  temp = myCAM.read_reg(ARDUCHIP_TEST1);
-  if (temp != 0x55) {
-    Serial.println(F("SPI1 interface Error!"));
-    while (1);
-  }
-  
   //Check if the camera module type is OV2640
   myCAM.wrSensorReg8_8(0xff, 0x01);
   myCAM.rdSensorReg8_8(OV2640_CHIPID_HIGH, &vid);

@@ -10,9 +10,8 @@
 #include <Adafruit_LSM303DLH_Mag.h>
 #include <Adafruit_LSM303_Accel.h>
 #include <Adafruit_Sensor.h>
-//#include <ESP32WebServer.h>
-//#include <ArduCAM.h>
-//#include "memorysaver.h"
+#include <ArduCAM.h>
+#include "memorysaver.h"
 #include <Wire.h>
 
 #define NEEDLE_LENGTH 40         // Visible length
@@ -44,7 +43,7 @@ const float Pi = 3.1415926;
 
 MPU6050 imu; // imu object called, appropriately, imu
 
-char network[] = "EECS_Labs"; // SSID for 6.08 Lab
+char network[] = "MIT"; // SSID for 6.08 Lab
 char password[] = "";   // Password for 6.08 Lab
 
 char TEAM_SERVER[] = "608dev-2.net"; // host for team server HTTP calls
@@ -66,6 +65,40 @@ WiFiClient client2;      // global WiFiClient Secure object
 
 Adafruit_LSM303DLH_Mag_Unified mag = Adafruit_LSM303DLH_Mag_Unified(12345);
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
+
+//ArduCam parameters
+#if !(defined ESP32 )
+#error Please select the ArduCAM ESP32 UNO board in the Tools/Board
+#endif
+//This demo can only work on OV2640_MINI_2MP or ARDUCAM_SHIELD_V2 platform.
+#if !(defined (OV2640_MINI_2MP)||defined (OV5640_MINI_5MP_PLUS) || defined (OV5642_MINI_5MP_PLUS) \
+    || defined (OV5642_MINI_5MP) || defined (OV5642_MINI_5MP_BIT_ROTATION_FIXED) \
+    ||(defined (ARDUCAM_SHIELD_V2) && (defined (OV2640_CAM) || defined (OV5640_CAM) || defined (OV5642_CAM))))
+#error Please select the hardware platform and camera module in the ../libraries/ArduCAM/memorysaver.h file
+#endif
+
+const int CS = 34;
+const int CAM_POWER_ON = 10;
+const int KEY = 45;
+
+ArduCAM myCAM(OV2640, CS);
+
+static const size_t bufferSize = 8000;
+static uint8_t buffer[bufferSize] = {0xFF};
+uint8_t temp = 0, temp_last = 0;
+int i = 0;
+bool is_header = false;
+
+char holder[bufferSize];
+char image_data[8000];
+char body[6000];
+char user[] = "team_42";
+
+const uint16_t CAM_IN_BUFFER_SIZE = 8000; //size of buffer to hold HTTP request
+const uint16_t CAM_OUT_BUFFER_SIZE = 8000; //size of buffer to hold HTTP response
+char request_buffer[CAM_IN_BUFFER_SIZE];
+char response_buffer[CAM_OUT_BUFFER_SIZE]; //char array buffer to hold HTTP request
+
 
 inline int sign_db(double x)
 {
@@ -386,6 +419,106 @@ private:
         return;
     }
 
+    void start_capture() {
+        myCAM.clear_fifo_flag();
+        myCAM.start_capture();
+      }
+      
+    void camCapture(ArduCAM myCAM) {
+        uint32_t len  = myCAM.read_fifo_length();
+        if (len >= MAX_FIFO_SIZE) //8M
+        {
+          Serial.println(F("Over size."));
+        }
+        if (len == 0 ) //0 kb
+        {
+          Serial.println(F("Size is 0."));
+        }
+        myCAM.CS_LOW();
+        myCAM.set_fifo_burst();
+        
+        i = 0;
+        while ( len-- )
+        {
+          temp_last = temp;
+          temp =  SPI.transfer(0x00);
+          //Read JPEG data from FIFO
+          if ( (temp == 0xD9) && (temp_last == 0xFF) ) //If find the end ,break while,
+          {
+            buffer[i++] = temp;  //save the last  0XD9
+            //Write the remain bytes in the buffer
+            is_header = false;
+            myCAM.CS_HIGH();
+            break;
+          }
+          if (is_header == true)
+          {
+            //Write image data to buffer if not full
+            if (i < bufferSize){
+              buffer[i++] = temp;
+      //        Serial.println(i);
+            }
+            else
+            {
+              //Write bufferSize bytes image data to file
+              i = 0;
+              buffer[i++] = temp;
+      //        Serial.println("Reset");
+            }
+          }
+          else if ((temp == 0xD8) && (temp_last == 0xFF))
+          { 
+            is_header = true;
+            buffer[i++] = temp_last;
+            buffer[i++] = temp;
+          }
+        }
+        memcpy(holder, buffer, sizeof(buffer));
+        memset(image_data, 0, sizeof(image_data));
+        base64_encode(image_data, holder, i);
+        memset(body, 0, sizeof(body));
+      
+        sprintf(body,"{\"location\":\'%s\', \"user_id\":\'%s\', \"image_encoding\":\'%s\'}", cur_building_name, user, image_data);
+        memset(request_buffer, 0, IN_BUFFER_SIZE);
+        memset(response_buffer, 0, OUT_BUFFER_SIZE);
+        request_buffer[0] = '\0'; //set 0th byte to null
+        int offset = 0; 
+        offset += sprintf(request_buffer + offset, "POST /sandbox/sc/team42/608_team42_final/image_request.py HTTP/1.1\r\n");
+        offset += sprintf(request_buffer + offset, "Host: 608dev-2.net\r\n");
+        offset += sprintf(request_buffer + offset, "Content-Type: application/json\r\n");
+        offset += sprintf(request_buffer + offset, "Content-Length: %d\r\n\r\n", strlen(body));
+        offset += sprintf(request_buffer + offset, body);
+        Serial.println(request_buffer);
+        do_http_request("608dev-2.net", request_buffer, response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, false);
+        Serial.println("-----------");
+        Serial.println(response_buffer);
+        Serial.println("-----------");
+    }
+    
+    void serverCapture() {
+        delay(1000);
+        start_capture();
+        Serial.println(F("CAM Capturing"));
+      
+        int total_time = 0;
+      
+        total_time = millis();
+        while (!myCAM.get_bit(ARDUCHIP_TRIG, CAP_DONE_MASK));
+        total_time = millis() - total_time;
+        Serial.print(F("capture total_time used (in miliseconds):"));
+        Serial.println(total_time, DEC);
+      
+        total_time = 0;
+      
+        Serial.println(F("CAM Capture Done."));
+        total_time = millis();
+        camCapture(myCAM);
+        total_time = millis() - total_time;
+        Serial.print(F("send total_time used (in miliseconds):"));
+        Serial.println(total_time, DEC);
+        Serial.println(F("CAM send Done."));
+    }
+
 public:
     PocketBeaver()
     {
@@ -474,13 +607,13 @@ public:
                 tft.println("Welcome to Pocket Beaver! Press Any Button to Start.");
             }
             old_state = state;
-            if (button1 == 1 || button2 == 1 || button3 == 1 || button4 == 1)
+            if (button1 == 1 || button2 == 1 || button3 == 1 || button4 == 1) 
             {
                 state = S01;
                 route_selection = 0;
                 old_selection = 0;
                 get_route_list();
-            }
+            }            
             break;
 
         case S01:
@@ -625,22 +758,26 @@ public:
             }
             else
             {
-                if (button3 == 1 || button2 == 1)
+                if (button2 == 1)
                 {
                     old_state = state;
                     state = S11;
+                }
+                else if (button3 == 1){
+                    old_state = state;
+                    state = S13;
                 }
                 else
                     old_state = state;
             }
             break;
 
-        case S131:
+        case S13:
             if (old_state != state)
             {
-                server.handleClient();
+                serverCapture();
+                state = old_state;
             }
-            
             break;
 
         default:
@@ -659,6 +796,8 @@ Button button1(BUTTON_PIN_1); // button object!
 Button button2(BUTTON_PIN_2); // button object!
 Button button3(BUTTON_PIN_3); // button object!
 Button button4(BUTTON_PIN_4); // button object!
+
+
 
 void setup()
 {
@@ -743,6 +882,50 @@ void setup()
     //     Serial.println("Restarting");
     //     ESP.restart(); // restart the ESP (proper way)
     // }
+
+    setup_camera();
+
+//  uint8_t vid, pid;
+//  uint8_t temp;
+//  //set the CS as an output:
+//  pinMode(CS, OUTPUT);
+//  pinMode(CAM_POWER_ON , OUTPUT);
+//  pinMode(KEY, INPUT_PULLUP);
+//  digitalWrite(CAM_POWER_ON, HIGH);
+//#if defined(__SAM3X8E__)
+//  Wire1.begin();
+//#else
+//  Wire.begin();
+//#endif
+////  Serial.begin(115200);
+//  Serial.println(F("ArduCAM Start!"));
+//
+//  // initialize SPI:
+//  SPI.begin();
+//  SPI.setFrequency(4000000); //8MHz
+//
+//  //Check if the ArduCAM SPI bus is OK
+//  myCAM.write_reg(ARDUCHIP_TEST1, 0x55);
+//  temp = myCAM.read_reg(ARDUCHIP_TEST1);
+//  if (temp != 0x55) {
+//    Serial.println(F("SPI1 interface Error!"));
+//    while (1);
+//  }
+//  
+//  //Check if the camera module type is OV2640
+//  myCAM.wrSensorReg8_8(0xff, 0x01);
+//  myCAM.rdSensorReg8_8(OV2640_CHIPID_HIGH, &vid);
+//  myCAM.rdSensorReg8_8(OV2640_CHIPID_LOW, &pid);
+//  if ((vid != 0x26 ) && (( pid != 0x41 ) || ( pid != 0x42 )))
+//    Serial.println(F("Can't find OV2640 module!"));
+//  else
+//    Serial.println(F("OV2640 detected."));
+//
+//  //Change to JPEG capture mode and initialize the OV2640 module
+//  myCAM.set_format(JPEG);
+//  myCAM.InitCAM();
+//  myCAM.OV2640_set_JPEG_size(OV2640_160x120);
+//  myCAM.clear_fifo_flag();
 
     setup_compass();
 
