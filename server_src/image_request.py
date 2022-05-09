@@ -12,7 +12,7 @@ def create_database():
     conn = sqlite3.connect(visits_db)
     c = conn.cursor()  # move cursor into database (allows us to execute commands)
     outs = ""
-    c.execute('''CREATE TABLE IF NOT EXISTS image_table (location_name text, user int, image_encoding text);''')  # run a CREATE TABLE command
+    c.execute('''CREATE TABLE IF NOT EXISTS image_table (location_name text, user_id int, image_encoding text);''')  # run a CREATE TABLE command
     conn.commit()  # commit commands
     conn.close()  # close connection to database
     return outs
@@ -36,13 +36,15 @@ def insert_image(location, user_id, image_encoding):
 def request_handler(request):
     if request['method'] == 'POST':
         try:
-            location = request['form']['location']
-            user_id = request['form']['user_id']
-            image_encoding = request['form']['image_encoding']
+            data = eval(request['data'])
+            location = data['location']
+            user_id = data['user_id']
+            image_encoding = data['image_encoding']
             insert_image(location, user_id, image_encoding)
         except:
-            return "Lack one or more arguments: location, user_id, image_url."
-        return {'location': location, 'user_id': user_id, 'image_encoding': image_encoding}
+            return "Missing value: location, user_id, and/or image_encoding"
+        return json.dumps(request['data'])
+        # return {'location': location, 'user_id': user_id, 'image_encoding': image_encoding}
     elif request['method'] == 'GET':
         location = request['values']['location'] if 'location' in request['values'] else None
         user_id = request['values']['user_id'] if 'user_id' in request['values'] else None
@@ -52,13 +54,13 @@ def request_handler(request):
         c = conn.cursor()  # move cursor into database (allows us to execute commands)
         if location and user_id and location != 'all' and user_id != 'all':
             all_image = c.execute(
-                '''SELECT * FROM image_table WHERE location_name = ? AND user = ?''', (location, user_id)).fetchall()
+                '''SELECT * FROM image_table WHERE location_name = ? AND user_id = ?''', (location, user_id)).fetchall()
         elif location and location != 'all':
             all_image = c.execute(
                 '''SELECT * FROM image_table WHERE location_name = ? ''', (location, )).fetchall()
         elif user_id and user_id != 'all':
             all_image = c.execute(
-                '''SELECT * FROM image_table WHERE user = ? ''', (user_id, )).fetchall()
+                '''SELECT * FROM image_table WHERE user_id = ? ''', (user_id, )).fetchall()
         else:
             all_image = c.execute('''SELECT * FROM image_table''').fetchall()
         out = {}
