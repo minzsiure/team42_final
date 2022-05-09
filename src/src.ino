@@ -56,7 +56,7 @@ const uint16_t RESPONSE_TIMEOUT = 6000; // time for claiming the HTTP response a
 const uint16_t IN_BUFFER_SIZE = 4500;   // size of buffer to hold HTTP request
 const uint16_t OUT_BUFFER_SIZE = 4500;  // size of buffer to hold HTTP response
 const uint16_t JSON_BODY_SIZE = 1000;   // size of buffer to hold JSON body
-char body[IN_BUFFER_SIZE];
+// char body[IN_BUFFER_SIZE];
 char request[IN_BUFFER_SIZE];
 char response[OUT_BUFFER_SIZE]; // char array buffer to hold HTTP request
 char json_body[JSON_BODY_SIZE];
@@ -69,6 +69,10 @@ WiFiClient client2;      // global WiFiClient Secure object
 
 Adafruit_LSM303DLH_Mag_Unified mag = Adafruit_LSM303DLH_Mag_Unified(12345);
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
+
+HardwareSerial mySoftwareSerial(1);
+DFRobotDFPlayerMini myDFPlayer;
+void printDetail(uint8_t type, int value);
 
 //ArduCam parameters
 #if !(defined ESP32 )
