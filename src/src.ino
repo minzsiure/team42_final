@@ -39,7 +39,7 @@ const int BUTTON_PIN_2 = 39;
 const int BUTTON_PIN_3 = 38;
 const int BUTTON_PIN_4 = 34;
 
-const int LOOP_PERIOD = 200;
+const int LOOP_PERIOD = 100;
 const int LOCATION_PERIOD = 30000;
 
 const float Pi = 3.1415926;
@@ -69,6 +69,15 @@ WiFiClient client2;      // global WiFiClient Secure object
 
 Adafruit_LSM303DLH_Mag_Unified mag = Adafruit_LSM303DLH_Mag_Unified(12345);
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
+
+// Initializations for step counter
+const uint16_t WAITING_PERIOD = 3000;    // milliseconds
+uint32_t steps = 0;
+uint32_t posting_timer = 0;
+uint32_t step_timer = 0;
+bool new_step = false;
+float old_acc_mag = 0;
+float older_acc_mag = 0;
 
 HardwareSerial mySoftwareSerial(1);
 DFRobotDFPlayerMini myDFPlayer;
@@ -100,25 +109,26 @@ bool is_header = false;
 char holder[bufferSize];
 char image_data[8000];
 char body[6000];
-char user[] = "team_42";
+char USER[] = "team_42";
 
 const uint16_t CAM_IN_BUFFER_SIZE = 8000; //size of buffer to hold HTTP request
 const uint16_t CAM_OUT_BUFFER_SIZE = 8000; //size of buffer to hold HTTP response
 char request_buffer[CAM_IN_BUFFER_SIZE];
 char response_buffer[CAM_OUT_BUFFER_SIZE]; //char array buffer to hold HTTP request
 
-
+// return sign (+ = 1, 0 = 0 , - = -1) for a double variable
 inline int sign_db(double x)
 {
     return ((x > 0) ? 1 : ((x < 0) ? -1 : 0));
 }
 
+// return if two double variables are equal (within 1e-8 difference)
 inline bool equal_db(double x, double y)
 {
     return abs(x - y) < 1e-8;
 }
 
-// used to get cw offset from North (positive y-axis) in degrees from (x00, y00) to (x11, y11)
+// used to get clockwise offset from North (positive y-axis) in degrees from (x00, y00) to (x11, y11)
 float direction(double x00, double y00, double x11, double y11)
 {
     float degree_from_pos_x_ccw = (atan2(y11 - y00, x11 - x00) * 180) / 3.1415926;
@@ -130,6 +140,12 @@ float direction(double x00, double y00, double x11, double y11)
     Serial.printf("Location: %f %f %f %f, Degree %f %f %f\n", x00, y00, x11, y11, degree_from_pos_x_ccw, degree_from_pos_x_cw_0_360, degree_from_pos_y_cw_0_360);
     return degree_from_pos_y_cw_0_360;
 }
+
+enum step_state{
+    REST,
+    WALK_UP,
+    WALK_DOWN
+}step_counter_state;
 
 // enum for button states
 enum button_state
@@ -334,45 +350,6 @@ private:
         Serial.printf("Parsed, total buildings: %d\n", total_building);
     }
 
-    // bool __within_area(double poly[][2], int len)
-    // {
-    //     Serial.printf("Begin checking area\n");
-    //     for (int i = 0; i < len; i++)
-    //     {
-    //         poly[i][0] = poly[i][0] - cur_lat;
-    //         poly[i][1] = poly[i][1] - cur_lon;
-    //     }
-    //     Serial.printf("Begin checking area each line\n");
-    //     int count = 0;
-    //     for (int i = 0; i < len - 1; i++)
-    //     {
-    //         if (equal_db(poly[i][0], poly[i + 1][0]) || sign_db(poly[i][0]) == sign_db(poly[i + 1][0]))
-    //             continue;
-    //         double p = (poly[i][1] * poly[i + 1][0] - poly[i + 1][1] * poly[i][0]) / (poly[i + 1][0] - poly[i][0]);
-    //         Serial.printf("    get k for line %d: %f\n", i, p);
-    //         if (sign_db(p) == 1)
-    //             count++;
-    //     }
-    //     Serial.printf("Finish checking area each line\n");
-    //     return ((count & 1) == 1);
-    // }
-
-    // void get_current_building()
-    // {
-    //     double building_7[7][2] = {{42.35955031432619, -71.09356300278161}, {42.359661541063744, -71.09324611026356}, {42.35932248846664, -71.09303546063194}, {42.359386677525606, -71.09283690710286}, {42.35919716678156, -71.09271694767907}, {42.35900612714659, -71.09324021895881}, {42.35955031432619, -71.09356300278161}};
-    //     double building_3[5][2] = {{42.35938973414583, -71.09283070230508}, {42.35957924430909, -71.0922660657068}, {42.359398904005594, -71.09214610628298}, {42.35923078969722, -71.09272935727462}, {42.35938973414583, -71.09283070230508}};
-    //     double building_10[5][2] = {{42.35985892359337, -71.0923922299534}, {42.36000869668367, -71.09195996237447}, {42.35952575360194, -71.09165799554903}, {42.35937597936053, -71.09212956018057}, {42.35985892359337, -71.0923922299534}};
-    //     Serial.printf("Finished defining building polygons\n");
-    //     if (__within_area(building_7, 7))
-    //         sprintf(cur_building_id, "7"), cur_building_no = 0, strcpy(cur_building_intro, building_intros[0]);
-    //     else if (__within_area(building_3, 5))
-    //         sprintf(cur_building_id, "3"), cur_building_no = 1, strcpy(cur_building_intro, building_intros[1]);
-    //     else if (__within_area(building_10, 5))
-    //         sprintf(cur_building_id, "10"), cur_building_no = 2, strcpy(cur_building_intro, building_intros[2]);
-    //     Serial.printf("Finished checking buildings, cur_building_no = %d, cur_id = %s\n", cur_building_no, cur_building_id);
-    //     return;
-    // }
-
     void get_current_building_new()
     {
         int req_len = 0;
@@ -500,7 +477,7 @@ private:
         base64_encode(image_data, holder, i);
         memset(body, 0, sizeof(body));
       
-        sprintf(body,"{\"location\":\'%s\', \"user_id\":\'%s\', \"image_encoding\":\'%s\'}", cur_building_name, user, image_data);
+        sprintf(body,"{\"location\":\'%s\', \"user_id\":\'%s\', \"image_encoding\":\'%s\'}", cur_building_name, USER, image_data);
         memset(request_buffer, 0, IN_BUFFER_SIZE);
         memset(response_buffer, 0, OUT_BUFFER_SIZE);
         request_buffer[0] = '\0'; //set 0th byte to null
@@ -511,7 +488,7 @@ private:
         offset += sprintf(request_buffer + offset, "Content-Length: %d\r\n\r\n", strlen(body));
         offset += sprintf(request_buffer + offset, body);
         Serial.println(request_buffer);
-        do_http_request("608dev-2.net", request_buffer, response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, false);
+        do_http_request(TEAM_SERVER, request_buffer, response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, false);
         Serial.println("-----------");
         Serial.println(response_buffer);
         Serial.println("-----------");
@@ -542,6 +519,7 @@ private:
     }
 
 public:
+
     PocketBeaver()
     {
         state = S0;
@@ -549,26 +527,9 @@ public:
         cur_lat = 0;
         cur_lon = 0;
         heading = 0;
-        // should be getting all possible routes from team server in S00-S01 transition, using fake data right now
-        // total_route = 3;
-        // sprintf(route_name[0], "Infinite");
-        // sprintf(route_name[1], "30s");
-        // sprintf(route_name[2], "Dorm St.");
-        // initialize route with fake data right now
-        // sprintf(building_ids[0], "7");
-        // sprintf(building_ids[1], "3");
-        // sprintf(building_ids[2], "10");
-        // sprintf(building_intros[0], "MIT Building 7, named Rogers Building and home to the iconic Lobby 7, hosts the Department of Architecture and a series of undergraduate-related offices. It also marks the start of the famous Infinite Corridor.");
-        // sprintf(building_intros[1], "MIT Building 3, part of the Maclaurin Buildings, hosts the Department of Mechanical Engineering as well as series of graduate-related offices. It is the second 2nd along the Infinite Corridor (from west to east).");
-        // sprintf(building_intros[2], "MIT Building 10, part of the Maclaurin Buildings, is the place where the iconic Great Dome resides, as well as being the home to the Barker Engineering Library. It is the 3rd building along the Infinite Corridor (from west to east).");
-        // building_lat[0] = 42.359247834274086;
-        // building_lat[1] = 0;
-        // building_lat[2] = 0;
-        // building_lon[0] = -71.09309433468378;
-        // building_lon[1] = 0;
-        // building_lon[2] = 0;
         route_selection = 0;
     }
+
     void update(double lat,
                 double lon,
                 int button1,
@@ -988,6 +949,8 @@ void setup()
 void loop()
 {
 
+    update_step_count();
+
     if (WiFi.status() != WL_CONNECTED)
     {
         Serial.println("Reconnecting to WiFi...");
@@ -998,26 +961,38 @@ void loop()
         WiFi.disconnect();
         WiFi.reconnect();
         int count = 0;
-        while (WiFi.status() != WL_CONNECTED && count < 12)
+        while (WiFi.status() != WL_CONNECTED && count < 60)
         {
-            delay(500);
+            delay(100);
             Serial.print(".");
+            update_step_count();
             count++;
         }
-        delay(2000);
+        count = 0;
+        while (count < 20){
+            delay(100);
+            count ++;
+            update_step_count();
+        }
         if (WiFi.isConnected())
         { // if we connected then print our IP, Mac, and SSID we're on
             Serial.println("CONNECTED!");
             Serial.printf("%d:%d:%d:%d (%s) (%s)\n", WiFi.localIP()[3], WiFi.localIP()[2],
                           WiFi.localIP()[1], WiFi.localIP()[0],
                           WiFi.macAddress().c_str(), WiFi.SSID().c_str());
-            delay(500);
+            count = 0;
+            while (count < 5){
+                delay(100);
+                count ++;
+                update_step_count();
+            }
             tft.fillScreen(TFT_BLACK);
         }
         else
         { // if we failed to connect just Try again.
             Serial.println("Failed to Connect :/  Going to retry");
             Serial.println(WiFi.status());
+            delay(100);
             return;
         }
     }
