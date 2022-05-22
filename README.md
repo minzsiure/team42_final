@@ -5,7 +5,7 @@ Given the increasing demand for campus touring at MIT and the shortage of traine
 Compared to the plain descriptions on Google Maps or official websites, the product we as MIT students develop is going to feature a unique student perspective and incorporate various additional functions to make the tour more enjoyable and show off MIT student hacker spirit.
 
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/6vCF7tuCITA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/zRx7khEgXGU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
 ## Table of Contents
@@ -307,62 +307,4 @@ Second, the current TFT screen is apparently not very capable for the high-refre
 * Orion Li
 * Pearl Li
 * Yan Wu
-* Eva Yi XieGiven the increasing demand for campus touring at MIT and the shortage of trained student tour guides, our project aims to implement an open-ended, interactive tourist guide to the MIT campus that can come in handy. Whether they are prospective students or just visiting MIT, they can use our application to explore our dynamic campus and experience firsthand how MIT is making a better world.
-
-## ESP32 Functionality Description
-
-All code for the ESP32 is stored in folder ```src/```, consisting of files:
-- ```src.ino```, the base file including the state machine class and button class
-- ```http_s_helper.ino```, the helper file containing HTTP and HTTPS requests for communicating with team server and outside servers
-- ```wifi_locator.ino```, the helper file containing functionalities that returns the ESP32's location based on Wifi APs around it and Google's geolocation API
-                    
-## Database Structure
-
-### building_data.db
-| Variable Name  | Data Type | Description|
-| :------------ |:---------------:| -----|
-| `building_name`      | string| name of the building |
-| `building_id`      | string| id of the building |
-| `coordinates`    | list        |   polygon coordinates for the building |
-| `text_intro` | string        |  text introduction of the building |
-| `audio_data` | list       |  audio version of the introduction |
-
-### user_image.db
-
-| Variable Name  | Data Type | Description|
-| :------------ |:---------------:| -----|
-| `location_name`      | string| name of the building |
-| `user_id`    | int       |   id of the user who uploaded the image |
-| `image_encoding` | string        |  the base64 encoding of the uploaded image |
-
-### route_data.db
-| Variable Name  | Data Type | Description|
-| :------------ |:---------------:| -----|
-| `route_name` | string| name of the route |
-| `route_id` | int| id of the route |
-| `route_building_name`    | list       |   buildings in the route listed in order |
-| `route_building_id` | list        |  ids of the buildings in the route listed in order |
-| `route_center_coordinates` | list        |  center coordinates of the buildings in the route listed in order |
-
-### step_data.db
-| Variable Name  | Data Type | Description|
-| :------------ |:---------------:| -----|
-| `username` | string| name of the user |
-| `date` | datetime| date |
-| `step`    | int       |   number of steps recorded during a day |
-
-## API Request Handlers
-| HTTP Verb  | Endpoint | Description|
-| :------------ |:---------------:| -----|
-| `GET` | /get_route_list.py| This endpoint returns number of routes avaliable and `list` the name of each route as a JSON object with parameters `num_routes` and `name_routes``. |
-| `GET` | /get_route_info.py?route_id={id}| This endpoint takes in a route id and return 1. a `list` of buildings in the selected route and 2. a `list` of center coordinates of the buildings in the corresponding route order, and 3. a `list` of building IDs in the selected route as a JSON object with parameters `building_names`, `route_center_coordinates`, and `route_building_id`. |
-| `GET` | /get_current_building.py?lat={latitude}&lon={longitude}| This endpoint takes in a latitute value and longitude value, and returns 1.`string` current building name where the user is located in, and 2. `string` corresponding current building id as a JSON object with parameters `current_building_name` and `current_building_id` . |
-| `GET` | /get_building_intro.py?building_id={id}&maxlen={number}| This endpoint takes in a building id and a maxlen parameter of the maximum words (in full sentenses) we want to display and return the correpsonding `string` text introduction of the building as a JSON object with parameter `text_intro`. |
-| `POST` | /image_request.py | The esp32 could post images in the form of base64 encoding under parameter `image_encoding` with `location` and `user_id`. |
-| `GET` | /image_request.py | This endpoint returns all the images stored in the database along with the location and user_id. |
-| `GET` | /image_request.py?location={location_name} | This endpoint returns the image filtered based on location name. |
-| `GET` | /image_request.py?user_id={user_id} | This endpoint returns the image filtered based on user_id. |
-| `GET` | /image_request.py?location={location_name}&user_id={user_id} | This endpoint returns the image filtered based on location name and user id. |
-| `GET` | /create_step_db.py?view={view_index}&username={user_id}&date={datetime} | This endpoint returns step data. When view = 1, return all users and all dates; view = 2, return all users during a specific date; view = 3, return data for specific user for all dates; view = 4, specific user and specific date. |
-| `POST` | /create_step_db.py?username={user_id}&step={step} | This endpoint updates step counter database. If user does not exist or user does not have at current date, create new row with user_id and current date. Otherwise, update existing row by incrementing steps.|
-
+* Eva Yi Xie
